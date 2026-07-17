@@ -4,28 +4,72 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import {
+  getNifty,
+  getSensex,
+  getStock,
+} from "../../services/marketService";
 
 export default function Landing() {
   const [user, setUser] = useState<User | null>(null);
 
+  const [nifty, setNifty] = useState<any>(null);
+  const [sensex, setSensex] = useState<any>(null);
+  const [featuredStock, setFeaturedStock] = useState<any>(null);
+
+  
+
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data }: { data: { user: User | null } }) => setUser(data.user));
+  supabase.auth
+    .getUser()
+    .then(({ data }) => setUser(data.user));
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        setUser(session?.user ?? null);
-      },
-    );
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      setUser(session?.user ?? null);
+    },
+  );
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const fetchMarketData = async () => {
+    try {
+      const [niftyData, sensexData, stockData] = await Promise.all([
+        getNifty(),
+        getSensex(),
+        getStock("reliance.ns"),
+      ]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+      setNifty(niftyData);
+      setSensex(sensexData);
+      setFeaturedStock(stockData);
+    } catch (error) {
+      console.error("Failed to fetch market data:", error);
+    }
   };
 
+  fetchMarketData();
+
+const interval = setInterval(() => {
+  fetchMarketData();
+}, 30000); // Refresh every 30 seconds
+
+return () => {
+  clearInterval(interval);
+  listener.subscription.unsubscribe();
+};
+
+  
+}, []);
+  const sensexChange =
+  sensex
+    ? (((sensex.price - sensex.open) / sensex.open) * 100).toFixed(2)
+    : null;
+
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+};
+console.log("Nifty:", nifty);
+console.log("Sensex:", sensex);
+console.log("Featured:", featuredStock);
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-slate-800 font-sans selection:bg-brand-lightGreen">
       {/* --- NAVBAR --- */}
@@ -138,17 +182,25 @@ export default function Landing() {
             {/* Portfolio Header */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] tracking-widest text-slate-400 font-bold uppercase">
-                Portfolio Value
-              </span>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                +5.2% this month
-              </span>
+  {sensex ? sensex.name : "Loading..."}
+</span>
+              <span
+  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+    sensexChange && Number(sensexChange) >= 0
+      ? "text-emerald-700 bg-emerald-50 border-emerald-100"
+      : "text-red-700 bg-red-50 border-red-100"
+  }`}
+>
+  {sensex
+    ? `${Number(sensexChange) >= 0 ? "+" : ""}${sensexChange}% Today`
+    : "Loading..."}
+</span>
             </div>
 
             {/* Portfolio Value */}
             <div className="text-3xl font-bold text-slate-900 mb-6 font-mono">
-              ₹10,52,300
-            </div>
+  {sensex ? `₹${sensex.price}` : "Loading..."}
+</div>
 
             {/* Custom SVG Line Chart */}
             <div className="w-full h-32 relative mb-6">
