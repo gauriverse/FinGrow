@@ -1,5 +1,31 @@
+//frontend/src/pages/Landing/Landing.tsx
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+
 export default function Landing() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth
+      .getUser()
+      .then(({ data }: { data: { user: User | null } }) => setUser(data.user));
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setUser(session?.user ?? null);
+      },
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-slate-800 font-sans selection:bg-brand-lightGreen">
       {/* --- NAVBAR --- */}
@@ -32,18 +58,41 @@ export default function Landing() {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition border border-transparent"
-          >
-            Log in
-          </Link>
-          <Link
-            to="/signup"
-            className="px-5 py-2.5 text-sm font-medium text-white bg-[#0F4C3A] hover:bg-[#0b382a] rounded-lg transition flex items-center gap-1"
-          >
-            Start free <span className="text-xs">→</span>
-          </Link>
+          {user ? (
+            <>
+              {user.user_metadata?.avatar_url && (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <span className="text-sm font-medium text-slate-700">
+                {user.user_metadata?.full_name || user.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition border border-transparent"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-[#0F4C3A] hover:bg-[#0b382a] rounded-lg transition flex items-center gap-1"
+              >
+                Start free <span className="text-xs">→</span>
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
