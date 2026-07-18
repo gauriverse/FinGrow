@@ -20,14 +20,20 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin,
+      queryParams: {
+        prompt: "select_account",
       },
-    });
-    if (error) console.error("Google login error:", error.message);
-  };
+    },
+  });
+
+  if (error) {
+    setError(error.message);
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
