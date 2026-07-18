@@ -35,42 +35,45 @@ export default function Auth() {
   }
 };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
+  setLoading(true);
 
-    if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: `${firstName} ${lastName}`,
-          },
+  if (mode === "signup") {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: `${firstName} ${lastName}`,
         },
-      });
+      },
+    });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        navigate("/"); // or wherever you want after signup
-      }
+    console.log("Signup data:", data);
+    console.log("Signup error:", error);
+
+    if (error) {
+      setError(error.message);
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        navigate("/");
-      }
+      navigate("/");
     }
+  } else {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    setLoading(false);
-  };
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate("/");
+    }
+  }
+
+  setLoading(false);
+};
 
   return (
     <div className="h-screen bg-white flex flex-col font-sans selection:bg-brand-lightGreen overflow-hidden">
