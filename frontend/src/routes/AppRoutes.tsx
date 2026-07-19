@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Landing from '../pages/Landing/Landing';
 import Login from '../pages/Auth/Login';
 
+import { Onboarding } from '../pages/Onboarding/Onboarding';
+
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -9,6 +11,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login />} />
+        <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
     </BrowserRouter>
   );

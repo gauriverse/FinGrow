@@ -41,7 +41,7 @@ export default function Auth() {
   setLoading(true);
 
   if (mode === "signup") {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -51,14 +51,14 @@ export default function Auth() {
       },
     });
 
-    console.log("Signup data:", data);
-    console.log("Signup error:", error);
-
+  
+   
     if (error) {
       setError(error.message);
     } else {
       navigate("/");
     }
+
   } else {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -68,7 +68,7 @@ export default function Auth() {
     if (error) {
       setError(error.message);
     } else {
-      navigate("/");
+      navigate("/onboarding");
     }
   }
 
@@ -416,4 +416,4 @@ export default function Auth() {
       </div>
     </div>
   );
-}
+} 
