@@ -19,11 +19,16 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
+ const handleGoogleLogin = async () => {
+  const redirectTo =
+    mode === "signup"
+      ? `${window.location.origin}/onboarding`
+      : `${window.location.origin}/`;
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: window.location.origin,
+      redirectTo,
       queryParams: {
         prompt: "select_account",
       },
@@ -35,7 +40,7 @@ export default function Auth() {
   }
 };
 
- const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError(null);
   setLoading(true);
@@ -50,15 +55,13 @@ export default function Auth() {
         },
       },
     });
+    
 
-  
-   
     if (error) {
       setError(error.message);
     } else {
-      navigate("/");
+      navigate("/onboarding");
     }
-
   } else {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -68,13 +71,15 @@ export default function Auth() {
     if (error) {
       setError(error.message);
     } else {
-      navigate("/onboarding");
+      // Existing user → Dashboard (temporary Landing page)
+      navigate("/");
+      // Later replace with:
+      // navigate("/dashboard");
     }
   }
 
   setLoading(false);
 };
-
   return (
     <div className="h-screen bg-white flex flex-col font-sans selection:bg-brand-lightGreen overflow-hidden">
       {/* --- HEADER --- */}
