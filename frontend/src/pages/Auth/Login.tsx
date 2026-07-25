@@ -18,68 +18,70 @@ export default function Auth() {
   const [lastName, setLastName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
- const handleGoogleLogin = async () => {
-  const redirectTo =
-    mode === "signup"
-      ? `${window.location.origin}/onboarding`
-      : `${window.location.origin}/`;
+  const handleGoogleLogin = async () => {
+    const redirectTo =
+      mode === "signup"
+        ? `${window.location.origin}/onboarding`
+        : `${window.location.origin}/`;
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo,
-      queryParams: {
-        prompt: "select_account",
-      },
-    },
-  });
-
-  if (error) {
-    setError(error.message);
-  }
-};
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError(null);
-  setLoading(true);
-
-  if (mode === "signup") {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
       options: {
-        data: {
-          full_name: `${firstName} ${lastName}`,
+        redirectTo,
+        queryParams: {
+          prompt: "select_account",
         },
       },
     });
-    
 
     if (error) {
       setError(error.message);
-    } else {
-      navigate("/onboarding");
     }
-  } else {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  };
 
-    if (error) {
-      setError(error.message);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfoMessage(null);
+    setLoading(true);
+
+    if (mode === "signup") {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: `${firstName} ${lastName}`,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setInfoMessage(
+          "We've sent you a confirmation link. Please verify your email to continue.",
+        );
+      }
     } else {
-      // Existing user → Dashboard (temporary Landing page)
-      navigate("/");
-      // Later replace with:
-      // navigate("/dashboard");
-    }
-  }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-  setLoading(false);
-};
+      if (error) {
+        setError(error.message);
+      } else {
+        navigate("/");
+      }
+    }
+
+    setLoading(false);
+  };
+
   return (
     <div className="h-screen bg-white flex flex-col font-sans selection:bg-brand-lightGreen overflow-hidden">
       {/* --- HEADER --- */}
@@ -341,6 +343,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </p>
               )}
 
+              {infoMessage && (
+                <p className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                  {infoMessage}
+                </p>
+              )}
+
               {/* Action Button */}
               <button
                 type="submit"
@@ -421,4 +429,4 @@ const handleSubmit = async (e: React.FormEvent) => {
       </div>
     </div>
   );
-} 
+}
