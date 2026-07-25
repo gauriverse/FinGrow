@@ -82,6 +82,23 @@ export default function Auth() {
     setLoading(false);
   };
 
+  const handleForgotPassword = async () => {
+  if (!email) {
+    setError("Enter your email above first, then click 'Forgot password?'");
+    return;
+  }
+  setError(null);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth/reset-password`,
+  });
+
+  if (error) {
+    setError(error.message);
+  } else {
+    setInfoMessage("Password reset link sent — check your email.");
+  }
+};
+
   return (
     <div className="h-screen bg-white flex flex-col font-sans selection:bg-brand-lightGreen overflow-hidden">
       {/* --- HEADER --- */}
@@ -331,7 +348,7 @@ export default function Auth() {
               {/* Forgot password link (Only shows up for login) */}
               {mode === "login" && (
                 <div className="flex justify-end">
-                  <span className="text-xs font-semibold text-[#0F4C3A] cursor-pointer hover:underline">
+                  <span onClick={handleForgotPassword} className="text-xs font-semibold text-[#0F4C3A] cursor-pointer hover:underline">
                     Forgot password?
                   </span>
                 </div>
