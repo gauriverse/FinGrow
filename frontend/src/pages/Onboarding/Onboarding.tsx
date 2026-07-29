@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { OptionCard } from "../../components/OptionCards";
+import { supabase } from "../../lib/supabase";
 
 // --- TypeScript Interfaces ---
 interface OnboardingOption {
@@ -23,67 +25,170 @@ export const Onboarding: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [selections, setSelections] = useState<Record<number, string>>({});
   const totalSteps = 5;
+  const navigate = useNavigate();
 
   // --- Step Content Configuration ---
   const steps: Record<number, StepConfig> = {
     1: {
       stepIndex: 1,
       heading: "What is your investing experience?",
-      subtitle: "Tell us about your investing experience so we can personalize your learning journey.",
+      subtitle:
+        "Tell us about your investing experience so we can personalize your learning journey.",
       options: [
-        { id: "beginner", icon: "🌱", title: "Beginner", description: "New to investing." },
-        { id: "intermediate", icon: "📊", title: "Intermediate", description: "Have basic investment knowledge." },
-        { id: "advanced", icon: "🏆", title: "Advanced", description: "Experienced investor." }
-      ]
+        {
+          id: "beginner",
+          icon: "🌱",
+          title: "Beginner",
+          description: "New to investing.",
+        },
+        {
+          id: "intermediate",
+          icon: "📊",
+          title: "Intermediate",
+          description: "Have basic investment knowledge.",
+        },
+        {
+          id: "advanced",
+          icon: "🏆",
+          title: "Advanced",
+          description: "Experienced investor.",
+        },
+      ],
     },
     2: {
       stepIndex: 2,
       heading: "What is your primary investment goal?",
-      subtitle: "This helps our engine highlight market opportunities relevant to your milestones.",
+      subtitle:
+        "This helps our engine highlight market opportunities relevant to your milestones.",
       isFiveGrid: true,
       options: [
-        { id: "wealth-growth", icon: "🎯", title: "Wealth Growth", description: "Long-term wealth creation through compounding." },
-        { id: "passive-income", icon: "💰", title: "Passive Income", description: "Dividend-focused investing." },
-        { id: "learn-investing", icon: "📚", title: "Learn Investing", description: "Understand the market with paper trading." },
-        { id: "major-purchase", icon: "🏠", title: "Major Purchase", description: "Saving for a house, vehicle or education." },
-        { id: "active-trading", icon: "📈", title: "Active Trading", description: "Short-term trading and market opportunities." }
-      ]
+        {
+          id: "wealth-growth",
+          icon: "🎯",
+          title: "Wealth Growth",
+          description: "Long-term wealth creation through compounding.",
+        },
+        {
+          id: "passive-income",
+          icon: "💰",
+          title: "Passive Income",
+          description: "Dividend-focused investing.",
+        },
+        {
+          id: "learn-investing",
+          icon: "📚",
+          title: "Learn Investing",
+          description: "Understand the market with paper trading.",
+        },
+        {
+          id: "major-purchase",
+          icon: "🏠",
+          title: "Major Purchase",
+          description: "Saving for a house, vehicle or education.",
+        },
+        {
+          id: "active-trading",
+          icon: "📈",
+          title: "Active Trading",
+          description: "Short-term trading and market opportunities.",
+        },
+      ],
     },
     3: {
       stepIndex: 3,
       heading: "How much investment risk are you comfortable taking?",
-      subtitle: "This helps us recommend investments that match your comfort level.",
+      subtitle:
+        "This helps us recommend investments that match your comfort level.",
       options: [
-        { id: "conservative", icon: "🛡", title: "Conservative", description: "Low volatility parameters, prioritizing capital preservation." },
-        { id: "moderate", icon: "⚖", title: "Moderate", description: "A balanced framework blending growth index targets and safety." },
-        { id: "aggressive", icon: "🚀", title: "Aggressive", description: "High volatility thresholds capturing dynamic market breakouts." }
-      ]
+        {
+          id: "conservative",
+          icon: "🛡",
+          title: "Conservative",
+          description:
+            "Low volatility parameters, prioritizing capital preservation.",
+        },
+        {
+          id: "moderate",
+          icon: "⚖",
+          title: "Moderate",
+          description:
+            "A balanced framework blending growth index targets and safety.",
+        },
+        {
+          id: "aggressive",
+          icon: "🚀",
+          title: "Aggressive",
+          description:
+            "High volatility thresholds capturing dynamic market breakouts.",
+        },
+      ],
     },
     4: {
       stepIndex: 4,
       heading: "How much do you plan to invest every month?",
       subtitle: "Choose the amount you'd typically invest each month.",
       options: [
-        { id: "under-5000", icon: "📉", title: "Less than ₹5,000", description: "Ideal for steady micro-investing rules." },
+        {
+          id: "under-5000",
+          icon: "📉",
+          title: "Less than ₹5,000",
+          description: "Ideal for steady micro-investing rules.",
+        },
 
-        { id: "5000-20000", icon: "💵", title: "₹5,000–₹20,000", description: "A structured base for building a core portfolio." },
+        {
+          id: "5000-20000",
+          icon: "💵",
+          title: "₹5,000–₹20,000",
+          description: "A structured base for building a core portfolio.",
+        },
 
-        { id: "20000-50000", icon: "🏛", title: "₹20,000–₹50,000", description: "Accelerated capital allocation strategy." },
+        {
+          id: "20000-50000",
+          icon: "🏛",
+          title: "₹20,000–₹50,000",
+          description: "Accelerated capital allocation strategy.",
+        },
 
-        { id: "50000-plus", icon: "💎", title: "More than ₹50,000", description: "Advanced market exposure and position sizing." }
-      ]
+        {
+          id: "50000-plus",
+          icon: "💎",
+          title: "More than ₹50,000",
+          description: "Advanced market exposure and position sizing.",
+        },
+      ],
     },
     5: {
       stepIndex: 5,
       heading: "What is your investment horizon?",
-      subtitle: "This helps us recommend investments suited to your time horizon.",
+      subtitle:
+        "This helps us recommend investments suited to your time horizon.",
       options: [
-        { id: "lt-1y", icon: "⏳", title: "Less than 1 year", description: "Short-term technical setups and liquidity drills." },
-        { id:  "1-3y", icon: "🗓", title: "1–3 years", description: "Medium-term tactical trend and cyclical plays." },
-        { id: "3-5y", icon: "📆", title: "3–5 years", description: "Core thematic investment blueprints." },
-        { id: "5y-plus", icon: "♾", title: "More than 5 years", description: "Long-term macroeconomic position holding." }
-      ]
-    }
+        {
+          id: "lt-1y",
+          icon: "⏳",
+          title: "Less than 1 year",
+          description: "Short-term technical setups and liquidity drills.",
+        },
+        {
+          id: "1-3y",
+          icon: "🗓",
+          title: "1–3 years",
+          description: "Medium-term tactical trend and cyclical plays.",
+        },
+        {
+          id: "3-5y",
+          icon: "📆",
+          title: "3–5 years",
+          description: "Core thematic investment blueprints.",
+        },
+        {
+          id: "5y-plus",
+          icon: "♾",
+          title: "More than 5 years",
+          description: "Long-term macroeconomic position holding.",
+        },
+      ],
+    },
   };
 
   const currentStepData = steps[currentStep];
@@ -95,13 +200,19 @@ export const Onboarding: React.FC = () => {
     setSelections((prev) => ({ ...prev, [currentStep]: id }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selectedOptionId) return;
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      // TODO: Save onboarding data to Supabase
-      // TODO: Navigate to Dashboard
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        await supabase
+          .from("profiles")
+          .update({ onboarding_completed: true })
+          .eq("id", userData.user.id);
+      }
+      navigate("/dashboard");
     }
   };
 
@@ -118,13 +229,13 @@ export const Onboarding: React.FC = () => {
         <div className="max-w-5xl mx-auto h-20 px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-                F
+              F
             </div>
 
             <span className="font-bold text-xl tracking-tight font-serif text-[#0F4C3A]">
-                FinGrow
+              FinGrow
             </span>
-            </div>
+          </div>
           <div className="font-sans text-xs font-semibold tracking-wider text-gray-400 uppercase">
             Step {currentStep} of {totalSteps}
           </div>
@@ -197,7 +308,9 @@ export const Onboarding: React.FC = () => {
                   /* Standard Grid mapping for 3 and 4 option configurations */
                   <div
                     className={`grid grid-cols-1 gap-4 ${
-                      currentStepData.options.length === 4 ? "md:grid-cols-2" : "md:grid-cols-3"
+                      currentStepData.options.length === 4
+                        ? "md:grid-cols-2"
+                        : "md:grid-cols-3"
                     }`}
                   >
                     {currentStepData.options.map((opt) => (
