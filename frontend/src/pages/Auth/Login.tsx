@@ -1,7 +1,8 @@
 // src/pages/Auth/Login.tsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { supabase, getOnboardingStatus } from "../../lib/supabase";
+
 
 type AuthMode = "login" | "signup";
 
@@ -21,15 +22,10 @@ export default function Auth() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
-    const redirectTo =
-      mode === "signup"
-        ? `${window.location.origin}/onboarding`
-        : `${window.location.origin}/`;
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           prompt: "select_account",
         },
@@ -75,7 +71,10 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/");
+        const {data: sessionData} = await supabase.auth.getSession();
+        const userId = sessionData.session?.user.id;
+        const completed = userId ? await getOnboardingStatus(userId) : false;
+        navigate(completed? "/dashboard" : "/onboarding");
       }
     }
 

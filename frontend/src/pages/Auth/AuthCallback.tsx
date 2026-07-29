@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { supabase, getOnboardingStatus } from "../../lib/supabase";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -15,7 +15,8 @@ export default function AuthCallback() {
         return;
       }
 
-      navigate("/onboarding");
+      const completed = await getOnboardingStatus(data.session.user.id);
+      navigate(completed? "/dashboard" : "/onboarding");
     };
 
     finishAuth();
