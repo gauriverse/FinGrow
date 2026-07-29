@@ -4,6 +4,8 @@ import Login from "../pages/Auth/Login";
 import AuthCallback from "../pages/Auth/AuthCallback";
 import ResetPassword from "../pages/Auth/ResetPassword";
 import { Onboarding } from "../pages/Onboarding/Onboarding";
+import Dashboard from "../pages/Dashboard/Dashboard";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function AppRoutes() {
   return (
@@ -14,7 +16,22 @@ export default function AppRoutes() {
         <Route path="/signup" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
