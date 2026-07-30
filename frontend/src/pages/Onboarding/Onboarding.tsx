@@ -242,7 +242,7 @@ export const Onboarding: React.FC = () => {
         </div>
 
         {/* Thin Premium Progress Bar */}
-        <div className="w-full h-[3px] bg-[#E5E7EB] relative">
+        <div className="w-full h-0.75 bg-[#E5E7EB] relative">
           <motion.div
             className="h-full bg-[#0F4C3A]"
             initial={{ width: "0%" }}
@@ -253,8 +253,8 @@ export const Onboarding: React.FC = () => {
       </header>
 
       {/* --- Main Interactivity Layer --- */}
-      <main className="flex-grow flex items-center justify-center py-16 px-6">
-        <div className="w-full max-w-[900px] mx-auto text-center">
+      <main className="grow flex items-center justify-center py-16 px-6">
+        <div className="w-full max-w-225 mx-auto text-center">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}

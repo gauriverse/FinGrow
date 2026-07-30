@@ -4,6 +4,7 @@ import Login from "../pages/Auth/Login";
 import AuthCallback from "../pages/Auth/AuthCallback";
 import ResetPassword from "../pages/Auth/ResetPassword";
 import { Onboarding } from "../pages/Onboarding/Onboarding";
+// @ts-expect-error: Dashboard is a JS file without declaration file
 import Dashboard from "../pages/Dashboard/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
 
