@@ -1,75 +1,85 @@
 //frontend/src/pages/Landing/Landing.tsx
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import {
-  getNifty,
-  getSensex,
-  getStock,
-} from "../../services/marketService";
+import { getNifty, getSensex, getStock } from "../../services/marketService";
+
+type MarketData = {
+  name: string;
+  price: number;
+  open: number;
+};
 
 export default function Landing() {
   const [user, setUser] = useState<User | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [nifty, setNifty] = useState<any>(null);
-  const [sensex, setSensex] = useState<any>(null);
-  const [featuredStock, setFeaturedStock] = useState<any>(null);
-
-  
+  const [nifty, setNifty] = useState<MarketData | null>(null);
+  const [sensex, setSensex] = useState<MarketData | null>(null);
+  const [featuredStock, setFeaturedStock] = useState<MarketData | null>(null);
 
   useEffect(() => {
-  supabase.auth
-    .getUser()
-    .then(({ data }) => setUser(data.user));
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
 
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      setUser(session?.user ?? null);
-    },
-  );
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const fetchMarketData = async () => {
-    try {
-      const [niftyData, sensexData, stockData] = await Promise.all([
-        getNifty(),
-        getSensex(),
-        getStock("reliance.ns"),
-      ]);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
 
-      setNifty(niftyData);
-      setSensex(sensexData);
-      setFeaturedStock(stockData);
-    } catch (error) {
-      console.error("Failed to fetch market data:", error);
-    }
-  };
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      },
+    );
 
-  fetchMarketData();
+    const fetchMarketData = async () => {
+      try {
+        const [niftyData, sensexData, stockData] = await Promise.all([
+          getNifty(),
+          getSensex(),
+          getStock("reliance.ns"),
+        ]);
 
-const interval = setInterval(() => {
-  fetchMarketData();
-}, 30000); // Refresh every 30 seconds
+        setNifty(niftyData);
+        setSensex(sensexData);
+        setFeaturedStock(stockData);
+      } catch (error) {
+        console.error("Failed to fetch market data:", error);
+      }
+    };
 
-return () => {
-  clearInterval(interval);
-  listener.subscription.unsubscribe();
-};
+    fetchMarketData();
 
-  
-}, []);
-  const sensexChange =
-  sensex
+    const interval = setInterval(() => {
+      fetchMarketData();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => {
+      clearInterval(interval);
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  const sensexChange = sensex
     ? (((sensex.price - sensex.open) / sensex.open) * 100).toFixed(2)
     : null;
 
-const handleLogout = async () => {
-  await supabase.auth.signOut();
-};
-console.log("Nifty:", nifty);
-console.log("Sensex:", sensex);
-console.log("Featured:", featuredStock);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+  console.log("Nifty:", nifty);
+  console.log("Sensex:", sensex);
+  console.log("Featured:", featuredStock);
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-slate-800 font-sans selection:bg-brand-lightGreen">
       {/* --- NAVBAR --- */}
@@ -103,24 +113,91 @@ console.log("Featured:", featuredStock);
         {/* Auth Buttons */}
         <div className="flex items-center gap-3">
           {user ? (
-            <>
-              {user.user_metadata?.avatar_url && (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt="avatar"
-                  className="w-8 h-8 rounded-full"
-                />
-              )}
-              <span className="text-sm font-medium text-slate-700">
-                {user.user_metadata?.full_name || user.email}
-              </span>
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition"
               >
-                Log out
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="avatar"
+                    className="w-7 h-7 rounded-full"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-[#0F4C3A] text-white text-xs font-semibold flex items-center justify-center">
+                    {(user.user_metadata?.full_name ||
+                      user.email ||
+                      "?")[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-slate-700 max-w-35 truncate">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
+                <svg
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
-            </>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-100 shadow-[0_8px_24px_rgba(0,0,0,0.08)] py-2 z-50">
+                  <div className="px-4 py-2 border-b border-slate-100 mb-1">
+                    <p className="text-sm font-medium text-slate-800 truncate">
+                      {user.user_metadata?.full_name || "Account"}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                  <Link
+                    to="/settings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                  >
+                    <svg
+                      className="w-4 h-4 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                    </svg>
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Link
@@ -182,25 +259,25 @@ console.log("Featured:", featuredStock);
             {/* Portfolio Header */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] tracking-widest text-slate-400 font-bold uppercase">
-  {sensex ? sensex.name : "Loading..."}
-</span>
+                {sensex ? sensex.name : "Loading..."}
+              </span>
               <span
-  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-    sensexChange && Number(sensexChange) >= 0
-      ? "text-emerald-700 bg-emerald-50 border-emerald-100"
-      : "text-red-700 bg-red-50 border-red-100"
-  }`}
->
-  {sensex
-    ? `${Number(sensexChange) >= 0 ? "+" : ""}${sensexChange}% Today`
-    : "Loading..."}
-</span>
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  sensexChange && Number(sensexChange) >= 0
+                    ? "text-emerald-700 bg-emerald-50 border-emerald-100"
+                    : "text-red-700 bg-red-50 border-red-100"
+                }`}
+              >
+                {sensex
+                  ? `${Number(sensexChange) >= 0 ? "+" : ""}${sensexChange}% Today`
+                  : "Loading..."}
+              </span>
             </div>
 
             {/* Portfolio Value */}
             <div className="text-3xl font-bold text-slate-900 mb-6 font-mono">
-  {sensex ? `₹${sensex.price}` : "Loading..."}
-</div>
+              {sensex ? `₹${sensex.price}` : "Loading..."}
+            </div>
 
             {/* Custom SVG Line Chart */}
             <div className="w-full h-32 relative mb-6">
