@@ -96,6 +96,9 @@ export default function Landing() {
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+          <Link to="/dashboard" className="hover:text-[#0F4C3A] transition">
+            Dashboard
+          </Link>
           <a href="#features" className="hover:text-[#0F4C3A] transition">
             Features
           </a>
