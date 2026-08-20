@@ -44,7 +44,7 @@ export default function Auth() {
     setLoading(true);
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -57,7 +57,10 @@ export default function Auth() {
 
       if (error) {
         setError(error.message);
-      } else {
+      } else if(data.user && data.user.identities && data.user.identities.length === 0) {
+        setError("An account with this email already exists. Please log in instead.");
+      }
+      else {
         setInfoMessage(
           "We've sent you a confirmation link. Please verify your email to continue.",
         );
