@@ -24,7 +24,9 @@ export const Onboarding: React.FC = () => {
   // --- State Management ---
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [selections, setSelections] = useState<Record<number, string>>({});
-  const totalSteps = 5;
+  const [age, setAge] = useState<string>("");
+  const [salary, setSalary] = useState<string>("");
+  const totalSteps = 7;
   const navigate = useNavigate();
 
   // --- Step Content Configuration ---
@@ -193,6 +195,15 @@ export const Onboarding: React.FC = () => {
 
   const currentStepData = steps[currentStep];
   const selectedOptionId = selections[currentStep] || "";
+
+  const isInputStep = currentStep === 6 || currentStep === 7;
+
+  const isCurrentStepCompleted = isInputStep
+    ? currentStep === 6
+      ? age.trim() !== ""
+      : salary.trim() !== ""
+    : selectedOptionId !== "";
+
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   // --- Navigation Handlers ---
@@ -200,21 +211,47 @@ export const Onboarding: React.FC = () => {
     setSelections((prev) => ({ ...prev, [currentStep]: id }));
   };
 
-  const handleNext = async () => {
-    if (!selectedOptionId) return;
-    if (currentStep < totalSteps) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        await supabase
-          .from("profiles")
-          .update({ onboarding_completed: true })
-          .eq("id", userData.user.id);
-      }
-      navigate("/dashboard");
+const handleNext = async () => {
+  if (!isCurrentStepCompleted) return;
+
+  if (currentStep < totalSteps) {
+    setCurrentStep((prev) => prev + 1);
+    return;
+  }
+
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    console.error("User not authenticated:", userError);
+    return;
+  }
+
+  const userId = userData.user.id;
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .upsert({
+      user_id: userId,
+      investment_experience: selections[1],
+      investment_goal: selections[2],
+      risk_level: selections[3],
+      monthly_investment: selections[4],
+      investment_horizon: selections[5],
+      age: Number(age),
+      monthly_income: Number(salary),
+      onboarding_completed: true,
+    },{
+      onConflict:"user_id",
     }
-  };
+    );
+  if (profileError) {
+    console.error("Error saving onboarding data:", profileError);
+    return;
+  }
+
+  navigate("/dashboard");
+};
 
   const handlePrevious = () => {
     if (currentStep > 1) {
@@ -266,15 +303,74 @@ export const Onboarding: React.FC = () => {
             >
               {/* Question Typography Block */}
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-[#0B3528] tracking-tight">
-                {currentStepData.heading}
-              </h1>
-              <p className="font-sans text-sm md:text-base text-gray-400 mt-3 max-w-xl mx-auto leading-relaxed">
-                {currentStepData.subtitle}
-              </p>
+  {currentStep === 6
+    ? "What is your age?"
+    : currentStep === 7
+    ? "What is your annual salary?"
+    : currentStepData.heading}
+</h1>
+
+<p className="font-sans text-sm md:text-base text-gray-400 mt-3 max-w-xl mx-auto leading-relaxed">
+  {currentStep === 6
+    ? "This helps us understand your financial profile and personalize your experience."
+    : currentStep === 7
+    ? "This helps us understand your financial capacity for investment planning."
+    : currentStepData.subtitle}
+</p>
 
               {/* Dynamic Answer Selection Matrices */}
               <div className="mt-12 max-w-3xl mx-auto space-y-4">
-                {currentStepData.isFiveGrid ? (
+                {currentStep === 6 ? (
+                  <div className="max-w-md mx-auto">
+                    <input
+  type="number"
+  min="18"
+  max="100"
+  value={age}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    if (value === "") {
+      setAge("");
+      return;
+    }
+
+    const numericValue = Number(value);
+
+    if (numericValue >= 18 && numericValue <= 100) {
+      setAge(value);
+    }
+  }}
+  placeholder="Enter your age"
+  className="w-full px-5 py-4 rounded-xl border border-[#E5E7EB] bg-white text-gray-700 text-center text-lg outline-none focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
+/>
+                  </div>
+                ) : currentStep === 7 ? (
+                  <div className="max-w-md mx-auto">
+                    <input
+  type="number"
+  min="0"
+  max="100000000"
+  value={salary}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    if (value === "") {
+      setSalary("");
+      return;
+    }
+
+    const numericValue = Number(value);
+
+    if (numericValue >= 0 && numericValue <= 100000000) {
+      setSalary(value);
+    }
+  }}
+  placeholder="Enter your annual salary"
+  className="w-full px-5 py-4 rounded-xl border border-[#E5E7EB] bg-white text-gray-700 text-center text-lg outline-none focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
+/>
+                  </div>
+                ) : currentStepData.isFiveGrid ? (
                   <>
                     {/* Rows grouping for Step 2 Asymmetric 3+2 Configuration */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -351,9 +447,9 @@ export const Onboarding: React.FC = () => {
           <button
             type="button"
             onClick={handleNext}
-            disabled={!selectedOptionId}
+            disabled={!isCurrentStepCompleted}
             className={`px-8 py-3 rounded-xl font-sans font-medium text-sm transition-all shadow-sm ${
-              selectedOptionId
+              isCurrentStepCompleted
                 ? "bg-[#0F4C3A] text-white hover:bg-[#0B3528] cursor-pointer hover:shadow"
                 : "bg-[#E5E7EB] text-gray-400 cursor-not-allowed"
             }`}
