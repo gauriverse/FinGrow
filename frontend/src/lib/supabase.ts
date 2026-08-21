@@ -15,8 +15,8 @@ export async function getOnboardingStatus(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("profiles")
     .select("onboarding_completed")
-    .eq("id", userId)
-    .single();
+    .eq("user_id", userId)
+    .maybeSingle();
 
   if (error || !data) return false;
   return (

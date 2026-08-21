@@ -43,8 +43,24 @@ export default function Auth() {
     setInfoMessage(null);
     setLoading(true);
 
-    if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({
+        if (mode === "signup") {
+      const { data: exists, error: checkError } = await supabase.rpc("email_exists", {
+        check_email: email,
+      });
+
+      if (checkError) {
+        setError("Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (exists) {
+        setError("An account with this email already exists. Please log in instead.");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -57,10 +73,7 @@ export default function Auth() {
 
       if (error) {
         setError(error.message);
-      } else if(data.user && data.user.identities && data.user.identities.length === 0) {
-        setError("An account with this email already exists. Please log in instead.");
-      }
-      else {
+      } else {
         setInfoMessage(
           "We've sent you a confirmation link. Please verify your email to continue.",
         );
