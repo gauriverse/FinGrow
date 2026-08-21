@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart,
@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [range, setRange] = useState("1M");
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const profileRef = useRef(null);
 
 useEffect(() => {
   const loadProfile = async () => {
@@ -53,7 +54,7 @@ useEffect(() => {
     const { data, error } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", userData.user.id)
+      .eq("user_id", userData.user.id)
       .single();
 
     console.log("PROFILE DATA:", data);
@@ -63,6 +64,17 @@ useEffect(() => {
       full_name: data?.full_name,
       email: userData.user.email,
     });
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+    if (
+      profileRef.current && !profileRef.current.contains(event.target)) {
+      setProfileOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {document.removeEventListener("mousedown", handleClickOutside);};
+}, []);
   };
 
   loadProfile();
@@ -208,7 +220,7 @@ const initials =
             <button className="w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-lg">
               🔔
             </button>
-            <div className="relative">
+            <div ref={profileRef} className="relative">
   <button
     onClick={() => setProfileOpen(!profileOpen)}
     className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition"
@@ -267,7 +279,7 @@ const initials =
               {today}
             </p>
             <h1 className="text-3xl font-serif font-semibold text-slate-900 mt-1">
-              Good morning, {firstName} 👋
+              Hello, {firstName} 👋
             </h1>
           </div>
 
