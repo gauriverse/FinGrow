@@ -16,3 +16,13 @@ export const getStock = async (symbol: string) => {
   const res = await axios.get(`${API}/stock/${symbol}`);
   return res.data;
 };
+
+export const getStockHistory = async (symbol: string) => {
+  const res = await axios.get(`${API}/history/${symbol}`);
+  return res.data;
+};
+
+export const getMarketMovers = async () => {
+  const res = await axios.get(`${API}/movers`);
+  return res.data;
+};

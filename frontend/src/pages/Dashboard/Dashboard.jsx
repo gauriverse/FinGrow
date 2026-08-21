@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { getNifty, getSensex, getStock } from "../../services/marketService";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart,
@@ -35,52 +36,88 @@ const performanceData = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+
   const [profile, setProfile] = useState(null);
   const [range, setRange] = useState("1M");
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const profileRef = useRef(null);
 
-useEffect(() => {
-  const loadProfile = async () => {
+  const [nifty, setNifty] = useState(null);
+  const [sensex, setSensex] = useState(null);
+  const [tcs, setTcs] = useState(null);
+
+  const [portfolio, setPortfolio] = useState(null);
+
+  useEffect(() => {
+  const loadDashboard = async () => {
     const { data: userData, error: userError } =
       await supabase.auth.getUser();
 
-    console.log("AUTH USER:", userData?.user);
-    console.log("AUTH ERROR:", userError);
-
-    if (!userData?.user) return;
+    if (userError || !userData?.user) return;
+    const userId = userData.user.id;
 
     const { data, error } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("user_id", userData.user.id)
-      .single();
+      .eq("id", userData.user.id)
+      .maybeSingle();
 
-    console.log("PROFILE DATA:", data);
-    console.log("PROFILE ERROR:", error);
+    if (!error) {
+      setProfile({
+        full_name: data?.full_name,
+        email: userData.user.email,
+      });
+    }
 
-    setProfile({
-      full_name: data?.full_name,
-      email: userData.user.email,
-    });
-    useEffect(() => {
-      const handleClickOutside = (event) => {
+
+    try {
+      const [niftyData, sensexData, tcsData, portfolioResponse] =
+      await Promise.all([
+        getNifty(),
+        getSensex(),
+        getStock("TCS.NS"),
+        fetch(
+          `http://127.0.0.1:8000/portfolio/summary?user_id=${userId}`
+        ),
+      ]);
+
+if (!portfolioResponse.ok) {
+  throw new Error("Failed to load portfolio summary");
+}
+
+const portfolioData = await portfolioResponse.json();
+
+setNifty(niftyData);
+setSensex(sensexData);
+setTcs(tcsData);
+setPortfolio(portfolioData);
+
+    } catch (error) {
+      console.error("Market data error:", error);
+    }
+
+  };
+
+  loadDashboard();
+}, []);
+
+useEffect(() => {
+  const handleClickOutside = (event) => {
     if (
-      profileRef.current && !profileRef.current.contains(event.target)) {
+      profileRef.current &&
+      !profileRef.current.contains(event.target)
+    ) {
       setProfileOpen(false);
     }
   };
 
   document.addEventListener("mousedown", handleClickOutside);
-  return () => {document.removeEventListener("mousedown", handleClickOutside);};
-}, []);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
   };
-
-  loadProfile();
 }, []);
-
-
 const fullName = profile?.full_name?.trim() || "";
 const nameParts = fullName.split(/\s+/);
 
@@ -215,7 +252,13 @@ const initials =
               <p className="text-[10px] font-semibold text-slate-400 tracking-wide">
                 WALLET
               </p>
-              <p className="text-sm font-bold text-slate-800">₹9,45,230</p>
+              <p className="text-sm font-bold text-slate-800">
+                {portfolio
+                  ? `₹${Number(portfolio.cash_balance).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}`
+                  : "Loading..."}
+              </p>
             </div>
             <button className="w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-lg">
               🔔
@@ -290,10 +333,27 @@ const initials =
                 Total Portfolio Value
               </p>
               <p className="text-2xl font-bold text-slate-900 mt-2">
-                ₹10,52,300
+                {portfolio
+                  ? `₹${Number(portfolio.total_value).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}`
+                  : "Loading..."}
               </p>
-              <p className="text-xs font-semibold text-emerald-600 mt-1">
-                ▲ +6.5% overall
+
+              <p
+                className={`text-xs font-semibold mt-1 ${
+                  portfolio && portfolio.overall_pnl >= 0
+                    ? "text-emerald-600"
+                    : "text-red-600"
+                }`}
+              >
+                {portfolio
+                  ? `${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
+                      Number(portfolio.overall_pnl)
+                    ).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })} overall`
+                  : "Loading..."}
               </p>
             </div>
 
@@ -308,19 +368,36 @@ const initials =
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
-                AI vs You
-              </p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
-                AI +5.2%{" "}
-                <span className="text-slate-400 font-medium text-base">
-                  · You +3.1%
-                </span>
-              </p>
-              <p className="text-xs font-semibold text-blue-600 mt-1">
-                AI leading by 2.1pp
-              </p>
-            </div>
+            <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+              Market Today
+            </p>
+
+            <p className="text-2xl font-bold text-slate-900 mt-2">
+              {nifty?.price
+                ? `₹${Number(nifty.price).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}`
+                : "Loading..."}
+            </p>
+
+            <p
+              className={`text-xs font-semibold mt-1 ${
+                nifty && nifty.price >= nifty.open
+                  ? "text-emerald-600"
+                  : "text-red-600"
+              }`}
+            >
+              {nifty
+                ? `${nifty.price >= nifty.open ? "▲ +" : "▼ "}${Math.abs(
+                    ((nifty.price - nifty.open) / nifty.open) * 100
+                  ).toFixed(2)}% today`
+                : "Loading..."}
+            </p>
+
+            <p className="text-[11px] text-slate-400 mt-1">
+              NIFTY 50
+            </p>
+          </div>
           </div>
 
           {/* Performance chart */}
@@ -403,10 +480,12 @@ const initials =
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900">
-                      Tata Consultancy
+                      {tcs?.company || "Tata Consultancy Services"}
                     </p>
                     <p className="text-sm text-slate-500">
-                      ₹3,842.50{" "}
+                      {tcs?.price ? `₹${Number(tcs.price).toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                      })}` : "Loading..."}
                       <span className="text-emerald-600 font-medium">
                         ▲1.2%
                       </span>
