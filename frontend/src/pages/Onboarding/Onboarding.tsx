@@ -322,7 +322,7 @@ const handleNext = async () => {
               <div className="mt-12 max-w-3xl mx-auto space-y-4">
                 {currentStep === 6 ? (
                   <div className="max-w-md mx-auto">
-                    <input
+                   <input
   type="number"
   min="18"
   max="100"
@@ -330,15 +330,24 @@ const handleNext = async () => {
   onChange={(e) => {
     const value = e.target.value;
 
+    // Empty karne allow karo
     if (value === "") {
       setAge("");
       return;
     }
 
-    const numericValue = Number(value);
-
-    if (numericValue >= 18 && numericValue <= 100) {
+    // Sirf 3 digits tak type karne do
+    if (value.length <= 3) {
       setAge(value);
+    }
+  }}
+  onBlur={() => {
+    if (age !== "") {
+      const numericValue = Number(age);
+
+      if (numericValue < 18 || numericValue > 100) {
+        setAge("");
+      }
     }
   }}
   placeholder="Enter your age"
