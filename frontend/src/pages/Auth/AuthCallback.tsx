@@ -16,7 +16,7 @@ export default function AuthCallback() {
       }
 
       const completed = await getOnboardingStatus(data.session.user.id);
-      navigate(completed? "/dashboard" : "/onboarding");
+      navigate(completed? "/personalized" : "/onboarding");
     };
 
     finishAuth();

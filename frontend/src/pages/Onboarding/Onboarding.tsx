@@ -250,7 +250,7 @@ const handleNext = async () => {
     return;
   }
 
-  navigate("/dashboard");
+  navigate("/personalized");
 };
 
   const handlePrevious = () => {

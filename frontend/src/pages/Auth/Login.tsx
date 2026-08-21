@@ -90,7 +90,7 @@ export default function Auth() {
         const {data: sessionData} = await supabase.auth.getSession();
         const userId = sessionData.session?.user.id;
         const completed = userId ? await getOnboardingStatus(userId) : false;
-        navigate(completed? "/dashboard" : "/onboarding");
+        navigate(completed? "/personalized" : "/onboarding");
       }
     }
 

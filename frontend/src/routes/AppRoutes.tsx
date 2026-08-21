@@ -7,6 +7,7 @@ import { Onboarding } from "../pages/Onboarding/Onboarding";
 // @ts-expect-error: Dashboard is a JS file without declaration file
 import Dashboard from "../pages/Dashboard/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
+import PersonalizedLanding from "../pages/PersonalizedLanding/PersonalizedLanding";
 
 export default function AppRoutes() {
   return (
@@ -30,6 +31,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/personalized"
+          element={
+            <ProtectedRoute>
+              <PersonalizedLanding />
             </ProtectedRoute>
           }
         />
