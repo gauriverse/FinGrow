@@ -1,20 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getNifty, getSensex, getStock } from "../../services/marketService";
 import { useNavigate } from "react-router-dom";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import {
-  FiMenu,
-  FiX,
-  FiSettings,
-  FiLogOut,
-  FiUser,
-} from "react-icons/fi";
+import { LineChart, Line, XAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { FiMenu, FiX, FiSettings, FiLogOut, FiUser } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 
 // Dummy data — replace with real portfolio history from your DB later
@@ -60,7 +48,7 @@ export default function Dashboard() {
     const { data, error } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", userData.user.id)
+      .eq("user_id", userData.user.id)
       .maybeSingle();
 
     if (!error) {
@@ -70,67 +58,70 @@ export default function Dashboard() {
       });
     }
 
-
+    // make sure the paper trading account exists before fetching summary
     try {
-      const [niftyData, sensexData, tcsData, portfolioResponse] =
-      await Promise.all([
+      await fetch(`http://127.0.0.1:8000/portfolio/account?user_id=${userId}`, {
+        method: "POST",
+      });
+    } catch (e) {
+      console.error("Could not create/verify paper account:", e);
+    }
+
+    const [niftyResult, sensexResult, tcsResult, portfolioResult] =
+      await Promise.allSettled([
         getNifty(),
         getSensex(),
         getStock("TCS.NS"),
-        fetch(
-          `http://127.0.0.1:8000/portfolio/summary?user_id=${userId}`
+        fetch(`http://127.0.0.1:8000/portfolio/summary?user_id=${userId}`).then(
+          async (res) => {
+            if (!res.ok) throw new Error("portfolio summary failed");
+            return res.json();
+          }
         ),
       ]);
 
-if (!portfolioResponse.ok) {
-  throw new Error("Failed to load portfolio summary");
-}
+    if (niftyResult.status === "fulfilled") setNifty(niftyResult.value);
+    else console.error("Nifty failed:", niftyResult.reason);
 
-const portfolioData = await portfolioResponse.json();
+    if (sensexResult.status === "fulfilled") setSensex(sensexResult.value);
+    else console.error("Sensex failed:", sensexResult.reason);
 
-setNifty(niftyData);
-setSensex(sensexData);
-setTcs(tcsData);
-setPortfolio(portfolioData);
+    if (tcsResult.status === "fulfilled") setTcs(tcsResult.value);
+    else console.error("TCS failed:", tcsResult.reason);
 
-    } catch (error) {
-      console.error("Market data error:", error);
-    }
-
+    if (portfolioResult.status === "fulfilled") setPortfolio(portfolioResult.value);
+    else console.error("Portfolio failed:", portfolioResult.reason);
   };
 
   loadDashboard();
 }, []);
 
-useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      profileRef.current &&
-      !profileRef.current.contains(event.target)
-    ) {
-      setProfileOpen(false);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
 
-  document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
-const fullName = profile?.full_name?.trim() || "";
-const nameParts = fullName.split(/\s+/);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  const fullName = profile?.full_name?.trim() || "";
+  const nameParts = fullName.split(/\s+/);
 
-const firstName = nameParts[0] || "there";
+  const firstName = nameParts[0] || "there";
 
-const initials =
-  nameParts.length > 1
-    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-    : nameParts[0]?.slice(0, 2);
+  const initials =
+    nameParts.length > 1
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+      : nameParts[0]?.slice(0, 2);
   const handleLogout = async () => {
-  await supabase.auth.signOut();
-  navigate("/login");
-};
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -151,101 +142,101 @@ const initials =
     <div className="min-h-screen bg-[#FAF9F5] font-sans">
       {/* --- SIDEBAR --- */}
       {/* --- SIDEBAR --- */}
-<>
-  {/* Overlay */}
-  {sidebarOpen && (
-    <div
-      className="fixed inset-0 bg-black/30 z-40"
-      onClick={() => setSidebarOpen(false)}
-    />
-  )}
+      <>
+        {/* Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/30 z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-  <aside
-    className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
+        <aside
+          className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
     transform transition-transform duration-300 ease-in-out
     ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-  >
-    {/* Logo + Close */}
-    <div className="flex items-center justify-between px-6 py-6">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-          F
-        </div>
+        >
+          {/* Logo + Close */}
+          <div className="flex items-center justify-between px-6 py-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
+                F
+              </div>
 
-        <span className="font-bold text-lg text-white font-serif tracking-tight">
-          FinGrow
-        </span>
-      </div>
+              <span className="font-bold text-lg text-white font-serif tracking-tight">
+                FinGrow
+              </span>
+            </div>
 
-      <button
-        onClick={() => setSidebarOpen(false)}
-        className="text-slate-400 hover:text-white text-xl"
-      >
-        ✕
-      </button>
-    </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="text-slate-400 hover:text-white text-xl"
+            >
+              ✕
+            </button>
+          </div>
 
-    <nav className="flex-1 px-3 space-y-1">
-      {navItems.map((item) => {
-        const active = item === "Dashboard";
+          <nav className="flex-1 px-3 space-y-1">
+            {navItems.map((item) => {
+              const active = item === "Dashboard";
 
-        return (
-          <button
-            key={item}
-            onClick={() => {
-              if (item === "Dashboard") {
-                setSidebarOpen(false);
-                return;
-              }
+              return (
+                <button
+                  key={item}
+                  onClick={() => {
+                    if (item === "Dashboard") {
+                      setSidebarOpen(false);
+                      return;
+                    }
 
-              // navigate(`/${item.toLowerCase().replace(" ", "-")}`);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-              active
-                ? "bg-white/10 text-white"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                active ? "bg-white" : "bg-slate-500"
-              }`}
-            />
+                    // navigate(`/${item.toLowerCase().replace(" ", "-")}`);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+                    active
+                      ? "bg-white/10 text-white"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      active ? "bg-white" : "bg-slate-500"
+                    }`}
+                  />
 
-            {item}
-          </button>
-        );
-      })}
-    </nav>
+                  {item}
+                </button>
+              );
+            })}
+          </nav>
 
-    <div className="px-6 py-6 border-t border-white/10">
-      <p className="text-[11px] text-slate-500">
-        Paper trading · virtual funds only
-      </p>
-    </div>
-  </aside>
-</>
+          <div className="px-6 py-6 border-t border-white/10">
+            <p className="text-[11px] text-slate-500">
+              Paper trading · virtual funds only
+            </p>
+          </div>
+        </aside>
+      </>
 
       {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col">
         {/* Top bar */}
         <header className="flex items-center justify-between px-10 py-5 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-4">
-    {/* Hamburger Menu */}
-    <button
-      onClick={() => setSidebarOpen(true)}
-      className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
-      aria-label="Open menu"
-    >
-      ☰
-    </button>
+            {/* Hamburger Menu */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
 
-    <input
-      type="text"
-      placeholder="Search stocks..."
-      className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
-    />
-  </div>
+            <input
+              type="text"
+              placeholder="Search stocks..."
+              className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
+            />
+          </div>
 
           <div className="flex items-center gap-6">
             <div className="text-right">
@@ -264,55 +255,54 @@ const initials =
               🔔
             </button>
             <div ref={profileRef} className="relative">
-  <button
-    onClick={() => setProfileOpen(!profileOpen)}
-    className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition"
-  >
-    {initials ? initials.toUpperCase() : "U"}
-  </button>
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition"
+              >
+                {initials ? initials.toUpperCase() : "U"}
+              </button>
 
-  {profileOpen && (
-    <div className="absolute right-0 top-12 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-      
-      {/* User info */}
-      <div className="px-4 py-4 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
-            {initials ? initials.toUpperCase() : "U"}
-          </div>
+              {profileOpen && (
+                <div className="absolute right-0 top-12 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                  {/* User info */}
+                  <div className="px-4 py-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
+                        {initials ? initials.toUpperCase() : "U"}
+                      </div>
 
-          <div className="min-w-0">
-            <p className="font-semibold text-slate-900 truncate">
-              {firstName === "there" ? "User" : firstName}
-            </p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">
+                          {firstName === "there" ? "User" : firstName}
+                        </p>
 
-            <p className="text-xs text-slate-400 truncate">
-              {profile?.email || ""}
-            </p>
-          </div>
-        </div>
-      </div>
+                        <p className="text-xs text-slate-400 truncate">
+                          {profile?.email || ""}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* Settings */}
-      <button
-        onClick={() => navigate("/settings")}
-        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
-      >
-        <FiSettings size={17} />
-        Settings
-      </button>
+                  {/* Settings */}
+                  <button
+                    onClick={() => navigate("/settings")}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    <FiSettings size={17} />
+                    Settings
+                  </button>
 
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
-      >
-        <FiLogOut size={17} />
-        Logout
-      </button>
-    </div>
-  )}
-</div>
+                  {/* Logout */}
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
+                  >
+                    <FiLogOut size={17} />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -349,7 +339,7 @@ const initials =
               >
                 {portfolio
                   ? `${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
-                      Number(portfolio.overall_pnl)
+                      Number(portfolio.overall_pnl),
                     ).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                     })} overall`
@@ -361,43 +351,57 @@ const initials =
               <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
                 Today's P&L
               </p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">+₹2,140</p>
-              <p className="text-xs font-semibold text-emerald-600 mt-1">
-                ▲ +0.4% today
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {portfolio
+                  ? `${portfolio.today_pnl >= 0 ? "+" : "-"}₹${Math.abs(
+                      Number(portfolio.today_pnl),
+                    ).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                  : "Loading..."}
+              </p>
+              <p
+                className={`text-xs font-semibold mt-1 ${
+                  portfolio && portfolio.today_pnl >= 0
+                    ? "text-emerald-600"
+                    : "text-red-600"
+                }`}
+              >
+                {portfolio
+                  ? `${portfolio.today_pnl >= 0 ? "▲ +" : "▼ "}${Math.abs(
+                      Number(portfolio.today_pnl_percent),
+                    ).toFixed(2)}% today`
+                  : "Loading..."}
               </p>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
-              Market Today
-            </p>
+              <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+                Market Today
+              </p>
 
-            <p className="text-2xl font-bold text-slate-900 mt-2">
-              {nifty?.price
-                ? `₹${Number(nifty.price).toLocaleString("en-IN", {
-                    minimumFractionDigits: 2,
-                  })}`
-                : "Loading..."}
-            </p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {nifty?.price
+                  ? `₹${Number(nifty.price).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}`
+                  : "Loading..."}
+              </p>
 
-            <p
-              className={`text-xs font-semibold mt-1 ${
-                nifty && nifty.price >= nifty.open
-                  ? "text-emerald-600"
-                  : "text-red-600"
-              }`}
-            >
-              {nifty
-                ? `${nifty.price >= nifty.open ? "▲ +" : "▼ "}${Math.abs(
-                    ((nifty.price - nifty.open) / nifty.open) * 100
-                  ).toFixed(2)}% today`
-                : "Loading..."}
-            </p>
+              <p
+                className={`text-xs font-semibold mt-1 ${
+                  nifty && nifty.price >= nifty.open
+                    ? "text-emerald-600"
+                    : "text-red-600"
+                }`}
+              >
+                {nifty
+                  ? `${nifty.price >= nifty.open ? "▲ +" : "▼ "}${Math.abs(
+                      ((nifty.price - nifty.open) / nifty.open) * 100,
+                    ).toFixed(2)}% today`
+                  : "Loading..."}
+              </p>
 
-            <p className="text-[11px] text-slate-400 mt-1">
-              NIFTY 50
-            </p>
-          </div>
+              <p className="text-[11px] text-slate-400 mt-1">NIFTY 50</p>
+            </div>
           </div>
 
           {/* Performance chart */}
@@ -483,9 +487,11 @@ const initials =
                       {tcs?.company || "Tata Consultancy Services"}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {tcs?.price ? `₹${Number(tcs.price).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}` : "Loading..."}
+                      {tcs?.price
+                        ? `₹${Number(tcs.price).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}`
+                        : "Loading..."}
                       <span className="text-emerald-600 font-medium">
                         ▲1.2%
                       </span>

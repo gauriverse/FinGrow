@@ -1,4 +1,12 @@
-import yfinance as yf
+from importlib import import_module
+
+
+try:
+    yf = import_module("yfinance")
+except ModuleNotFoundError as exc:
+    raise RuntimeError(
+        "The yfinance package is required to retrieve Yahoo Finance data."
+    ) from exc
 
 
 def get_stock_data(symbol: str):

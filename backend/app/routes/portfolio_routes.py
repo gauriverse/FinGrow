@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.supabase import admin_supabase
+from app.services.yahoo_service import get_stock_data
 
 router = APIRouter()
 
@@ -49,7 +50,6 @@ def create_paper_account(user_id: str):
 def get_portfolio_summary(user_id: str):
 
     try:
-        # 1. Get user's paper account
         account_result = (
             admin_supabase
             .table("paper_accounts")
@@ -60,14 +60,10 @@ def get_portfolio_summary(user_id: str):
         )
 
         if not account_result.data:
-            raise HTTPException(
-                status_code=404,
-                detail="Paper account not found"
-            )
+            raise HTTPException(status_code=404, detail="Paper account not found")
 
         cash_balance = float(account_result.data["cash_balance"])
 
-        # 2. Get user's portfolio holdings
         portfolio_result = (
             admin_supabase
             .table("portfolio")
@@ -81,14 +77,14 @@ def get_portfolio_summary(user_id: str):
         invested_value = 0
         current_value = 0
         overall_pnl = 0
+        today_pnl = 0
 
-        # 3. Calculate current value of each holding
         for holding in holdings:
 
             stock_result = (
                 admin_supabase
                 .table("stocks")
-                .select("current_price")
+                .select("current_price, symbol")
                 .eq("id", holding["stock_id"])
                 .maybe_single()
                 .execute()
@@ -99,9 +95,8 @@ def get_portfolio_summary(user_id: str):
 
             quantity = int(holding["quantity"] or 0)
             buy_price = float(holding["buy_price"] or 0)
-            current_price = float(
-                stock_result.data["current_price"] or 0
-            )
+            current_price = float(stock_result.data["current_price"] or 0)
+            symbol = stock_result.data.get("symbol")
 
             invested = quantity * buy_price
             current = quantity * current_price
@@ -110,24 +105,35 @@ def get_portfolio_summary(user_id: str):
             current_value += current
             overall_pnl += current - invested
 
-        # 4. Total portfolio value
+            # today's P&L for THIS holding — now correctly inside the loop
+            try:
+                if symbol:
+                    live_data = get_stock_data(symbol)
+                    previous_close = live_data.get("previousClose")
+                    if previous_close:
+                        today_pnl += quantity * (current_price - float(previous_close))
+            except Exception as e:
+                print(f"Could not fetch previousClose for {symbol}:", repr(e))
+
         total_value = cash_balance + current_value
+
+        today_pnl_percent = (
+            (today_pnl / (current_value - today_pnl)) * 100
+            if (current_value - today_pnl) != 0 else 0
+        )
 
         return {
             "cash_balance": round(cash_balance, 2),
             "invested_value": round(invested_value, 2),
             "current_value": round(current_value, 2),
             "total_value": round(total_value, 2),
-            "overall_pnl": round(overall_pnl, 2)
+            "overall_pnl": round(overall_pnl, 2),
+            "today_pnl": round(today_pnl, 2),
+            "today_pnl_percent": round(today_pnl_percent, 2),
         }
 
     except HTTPException:
         raise
-
     except Exception as e:
         print("PORTFOLIO SUMMARY ERROR:", repr(e))
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
