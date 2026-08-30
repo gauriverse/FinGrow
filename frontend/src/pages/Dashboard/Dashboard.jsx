@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { FiMenu, FiX, FiSettings, FiLogOut, FiUser } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
+import { getPortfolioSummary } from "../../services/portfolioService";
 
 // Dummy data — replace with real portfolio history from your DB later
 const performanceData = [
@@ -39,59 +40,74 @@ export default function Dashboard() {
 
   useEffect(() => {
   const loadDashboard = async () => {
-    const { data: userData, error: userError } =
-      await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    if (userError || !userData?.user) return;
-    const userId = userData.user.id;
+  if (userError || !user) {
+    navigate("/login");
+    return;
+  }
 
-    const { data, error } = await supabase
+  // ---------------- PROFILE ----------------
+
+  const { data: profileData, error: profileError } =
+    await supabase
       .from("profiles")
       .select("full_name")
-      .eq("user_id", userData.user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!error) {
-      setProfile({
-        full_name: data?.full_name,
-        email: userData.user.email,
-      });
-    }
+  if (!profileError) {
+    setProfile({
+      full_name: profileData?.full_name,
+      email: user.email,
+    });
+  }
 
-    // make sure the paper trading account exists before fetching summary
-    try {
-      await fetch(`http://127.0.0.1:8000/portfolio/account?user_id=${userId}`, {
-        method: "POST",
-      });
-    } catch (e) {
-      console.error("Could not create/verify paper account:", e);
-    }
+  // ---------------- MARKET + PORTFOLIO ----------------
 
-    const [niftyResult, sensexResult, tcsResult, portfolioResult] =
-      await Promise.allSettled([
-        getNifty(),
-        getSensex(),
-        getStock("TCS.NS"),
-        fetch(`http://127.0.0.1:8000/portfolio/summary?user_id=${userId}`).then(
-          async (res) => {
-            if (!res.ok) throw new Error("portfolio summary failed");
-            return res.json();
-          }
-        ),
-      ]);
+  const [
+    niftyResult,
+    sensexResult,
+    tcsResult,
+    portfolioResult,
+  ] = await Promise.allSettled([
+    getNifty(),
+    getSensex(),
+    getStock("TCS.NS"),
+    getPortfolioSummary(),
+  ]);
 
-    if (niftyResult.status === "fulfilled") setNifty(niftyResult.value);
-    else console.error("Nifty failed:", niftyResult.reason);
+  // NIFTY
+  if (niftyResult.status === "fulfilled") {
+    setNifty(niftyResult.value);
+  } else {
+    console.error("Nifty failed:", niftyResult.reason);
+  }
 
-    if (sensexResult.status === "fulfilled") setSensex(sensexResult.value);
-    else console.error("Sensex failed:", sensexResult.reason);
+  // SENSEX
+  if (sensexResult.status === "fulfilled") {
+    setSensex(sensexResult.value);
+  } else {
+    console.error("Sensex failed:", sensexResult.reason);
+  }
 
-    if (tcsResult.status === "fulfilled") setTcs(tcsResult.value);
-    else console.error("TCS failed:", tcsResult.reason);
+  // TCS
+  if (tcsResult.status === "fulfilled") {
+    setTcs(tcsResult.value);
+  } else {
+    console.error("TCS failed:", tcsResult.reason);
+  }
 
-    if (portfolioResult.status === "fulfilled") setPortfolio(portfolioResult.value);
-    else console.error("Portfolio failed:", portfolioResult.reason);
-  };
+  // PORTFOLIO
+  if (portfolioResult.status === "fulfilled") {
+    setPortfolio(portfolioResult.value);
+  } else {
+    console.error("Portfolio failed:", portfolioResult.reason);
+  }
+};
 
   loadDashboard();
 }, []);

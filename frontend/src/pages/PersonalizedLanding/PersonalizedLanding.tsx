@@ -8,6 +8,7 @@ type Profile = {
   risk_level: string | null;
   investment_goal: string | null;
   investment_horizon: string | null;
+  starting_paper_capital: number | null;
 };
 
 type MarketData = {
@@ -33,7 +34,9 @@ export default function PersonalizedLanding() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("full_name, risk_level, investment_goal, investment_horizon")
+        .select(
+                  "full_name, risk_level, investment_goal, investment_horizon, starting_paper_capital"
+                )
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -117,7 +120,9 @@ export default function PersonalizedLanding() {
             Starting capital
           </span>
           <p className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-            ₹10,00,000
+            {profile?.starting_paper_capital != null
+              ? `₹${Number(profile.starting_paper_capital).toLocaleString("en-IN")}`
+              : "Not set"}
           </p>
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
             <div className="flex items-center justify-between">

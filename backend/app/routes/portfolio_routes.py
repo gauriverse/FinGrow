@@ -1,68 +1,86 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
 from app.supabase import admin_supabase
+from app.auth import get_current_user
 from app.services.yahoo_service import get_stock_data
 
 router = APIRouter()
 
 
-@router.post("/account")
-def create_paper_account(user_id: str):
+def get_or_create_paper_account(user_id: str):
+    print("USER ID:", user_id)
 
-    try:
-        # Check whether the user already has an account
-        existing = (
-            admin_supabase
-            .table("paper_accounts")
-            .select("id, user_id, cash_balance")
-            .eq("user_id", user_id)
-            .execute()
-        )
+    existing = (
+        admin_supabase
+        .table("paper_accounts")
+        .select("id, user_id, cash_balance")
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
 
-        if existing.data:
-            return existing.data[0]
+    print("EXISTING RESPONSE:", existing)
 
-        # Create the initial paper-trading account
-        result = (
-            admin_supabase
-            .table("paper_accounts")
-            .insert({
-                "user_id": user_id,
-                "cash_balance": 100000
-            })
-            .execute()
-        )
+    if existing is not None and existing.data:
+        print("EXISTING ACCOUNT:", existing.data)
+        return existing.data
 
-        if not result.data:
-            raise Exception("Paper account was not created")
+    print("NO PAPER ACCOUNT FOUND — CREATING ONE")
 
-        return result.data[0]
+    # Get the user's selected starting paper capital
+    profile_result = (
+        admin_supabase
+        .table("profiles")
+        .select("starting_paper_capital")
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
 
-    except Exception as e:
-        print("PAPER ACCOUNT ERROR:", repr(e))
+    print("PROFILE CAPITAL RESPONSE:", profile_result)
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    if not profile_result or not profile_result.data:
+        raise Exception("User profile not found")
+
+    starting_capital = profile_result.data.get("starting_paper_capital")
+
+    if starting_capital is None:
+        raise Exception("Starting paper capital is not set")
+
+    starting_capital = float(starting_capital)
+
+    result = (
+        admin_supabase
+        .table("paper_accounts")
+        .insert({
+            "user_id": user_id,
+            "cash_balance": starting_capital
+        })
+        .execute()
+    )
+
+    print("INSERT RESPONSE:", result)
+
+    if result is None or not result.data:
+        raise Exception("Paper account could not be created")
+
+    return result.data[0]
 
 
 @router.get("/summary")
-def get_portfolio_summary(user_id: str):
-
+def get_portfolio_summary(
+    current_user=Depends(get_current_user)
+):
     try:
-        account_result = (
-            admin_supabase
-            .table("paper_accounts")
-            .select("cash_balance")
-            .eq("user_id", user_id)
-            .maybe_single()
-            .execute()
-        )
+        # Get the authenticated Supabase user's UUID automatically.
+        # Nothing is passed manually from Swagger/frontend.
+        user_id = str(current_user.id)
 
-        if not account_result.data:
-            raise HTTPException(status_code=404, detail="Paper account not found")
+        # Automatically create the paper account if this is
+        # the user's first time opening the dashboard.
+        account = get_or_create_paper_account(user_id)
 
-        cash_balance = float(account_result.data["cash_balance"])
+        cash_balance = float(account["cash_balance"])
 
         portfolio_result = (
             admin_supabase
@@ -74,10 +92,10 @@ def get_portfolio_summary(user_id: str):
 
         holdings = portfolio_result.data or []
 
-        invested_value = 0
-        current_value = 0
-        overall_pnl = 0
-        today_pnl = 0
+        invested_value = 0.0
+        current_value = 0.0
+        overall_pnl = 0.0
+        today_pnl = 0.0
 
         for holding in holdings:
 
@@ -93,9 +111,12 @@ def get_portfolio_summary(user_id: str):
             if not stock_result.data:
                 continue
 
-            quantity = int(holding["quantity"] or 0)
-            buy_price = float(holding["buy_price"] or 0)
-            current_price = float(stock_result.data["current_price"] or 0)
+            quantity = int(holding.get("quantity") or 0)
+            buy_price = float(holding.get("buy_price") or 0)
+            current_price = float(
+                stock_result.data.get("current_price") or 0
+            )
+
             symbol = stock_result.data.get("symbol")
 
             invested = quantity * buy_price
@@ -105,21 +126,32 @@ def get_portfolio_summary(user_id: str):
             current_value += current
             overall_pnl += current - invested
 
-            # today's P&L for THIS holding — now correctly inside the loop
-            try:
-                if symbol:
+            # Today's P&L
+            if symbol:
+                try:
                     live_data = get_stock_data(symbol)
+
                     previous_close = live_data.get("previousClose")
-                    if previous_close:
-                        today_pnl += quantity * (current_price - float(previous_close))
-            except Exception as e:
-                print(f"Could not fetch previousClose for {symbol}:", repr(e))
+
+                    if previous_close is not None:
+                        today_pnl += quantity * (
+                            current_price - float(previous_close)
+                        )
+
+                except Exception as e:
+                    print(
+                        f"Could not fetch previousClose for {symbol}:",
+                        repr(e)
+                    )
 
         total_value = cash_balance + current_value
 
+        previous_total_value = total_value - today_pnl
+
         today_pnl_percent = (
-            (today_pnl / (current_value - today_pnl)) * 100
-            if (current_value - today_pnl) != 0 else 0
+            (today_pnl / previous_total_value) * 100
+            if previous_total_value != 0
+            else 0
         )
 
         return {
@@ -134,6 +166,20 @@ def get_portfolio_summary(user_id: str):
 
     except HTTPException:
         raise
+
     except Exception as e:
-        print("PORTFOLIO SUMMARY ERROR:", repr(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+
+        print("========== PORTFOLIO SUMMARY ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        print("==============================================")
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+        
+
+   
