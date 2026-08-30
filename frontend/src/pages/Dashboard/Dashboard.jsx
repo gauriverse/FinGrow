@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const profileRef = useRef(null);
+  const skipNextSearch = useRef(false);
 
   const [nifty, setNifty] = useState(null);
   const [sensex, setSensex] = useState(null);
@@ -33,36 +34,42 @@ export default function Dashboard() {
   const [selectedStock, setSelectedStock] = useState(null);
 
   // =====================================================
-  // STOCK SEARCH
-  // =====================================================
+// STOCK SEARCH
+// =====================================================
 
-  useEffect(() => {
-    const searchStocksWithDelay = async () => {
-      const query = searchQuery.trim();
+useEffect(() => {
+  const searchStocksWithDelay = async () => {
+    const query = searchQuery.trim();
 
-      if (!query) {
-        setSearchResults([]);
-        return;
-      }
+    // Don't search again immediately after selecting a stock
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false;
+      return;
+    }
 
-      try {
-        setSearchLoading(true);
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
 
-        const results = await searchStocks(query);
+    try {
+      setSearchLoading(true);
 
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Stock search failed:", error);
-        setSearchResults([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
+      const results = await searchStocks(query);
 
-    const timer = setTimeout(searchStocksWithDelay, 300);
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Stock search failed:", error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const timer = setTimeout(searchStocksWithDelay, 300);
+
+  return () => clearTimeout(timer);
+}, [searchQuery]);
 
   // =====================================================
   // LOAD DASHBOARD
@@ -188,32 +195,32 @@ export default function Dashboard() {
   }, []);
 
   // =====================================================
-  // SELECT STOCK
-  // =====================================================
+// SELECT STOCK
+// =====================================================
 
-  const handleStockSelect = async (stock) => {
-    try {
-      console.log("Selected stock:", stock.symbol);
+const handleStockSelect = async (stock) => {
+  try {
+    console.log("Selected stock:", stock.symbol);
 
-      const data = await getStock(stock.symbol);
+    const data = await getStock(stock.symbol);
 
-      console.log("Stock data:", data);
+    console.log("Stock data:", data);
 
-      // Save the returned stock data
-      setSelectedStock(data);
+    setSelectedStock(data);
 
-      // Put selected symbol in search box
-      setSearchQuery(stock.symbol);
+    // Prevent the selected symbol from triggering another search
+    skipNextSearch.current = true;
 
-      // Close dropdown
-      setSearchResults([]);
-    } catch (error) {
-      console.error(
-        "Failed to load stock:",
-        error
-      );
-    }
-  };
+    setSearchQuery( stock.symbol.replace(".NS", ""));
+
+    // Close search results
+    setSearchResults([]);
+    setSearchLoading(false);
+
+  } catch (error) {
+    console.error("Failed to load stock:", error);
+  }
+};
 
   // =====================================================
   // USER INFO
@@ -322,46 +329,45 @@ export default function Dashboard() {
           <nav className="flex-1 px-3 space-y-1">
 
             {navItems.map((item) => {
+  const active = item === "Dashboard";
 
-              const active =
-                item === "Dashboard";
+  return (
+    <button
+      key={item}
+      onClick={() => {
 
-              return (
-                <button
-                  key={item}
-                  onClick={() => {
+        if (item === "Dashboard") {
+          setSidebarOpen(false);
+          setSelectedStock(null);
+          setSearchQuery("");
+          setSearchResults([]);
+          return;
+        }
 
-                    if (item === "Dashboard") {
-                      setSidebarOpen(false);
-                      return;
-                    }
+        if (item === "Settings") {
+          setSidebarOpen(false);
+          navigate("/settings");
+        }
 
-                    if (item === "Settings") {
-                      setSidebarOpen(false);
-                      navigate("/settings");
-                    }
+      }}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+        active
+          ? "bg-white/10 text-white"
+          : "text-slate-400 hover:text-white hover:bg-white/5"
+      }`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${
+          active
+            ? "bg-white"
+            : "bg-slate-500"
+        }`}
+      />
 
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      active
-                        ? "bg-white"
-                        : "bg-slate-500"
-                    }`}
-                  />
-
-                  {item}
-
-                </button>
-              );
-            })}
+      {item}
+    </button>
+  );
+})}
 
           </nav>
 
@@ -416,8 +422,9 @@ export default function Dashboard() {
                 className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
               />
 
-              {searchQuery && (
-                <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              {searchQuery &&   
+              !selectedStock && (searchResults.length > 0 || searchLoading) && (
+  <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
 
                   {searchLoading && (
                     <p className="px-4 py-3 text-sm text-slate-400">
@@ -587,85 +594,7 @@ export default function Dashboard() {
 
         <main className="flex-1 px-10 py-7 space-y-5">
 
-          {/* =====================================================
-              SELECTED STOCK
-          ===================================================== */}
-
-          {selectedStock && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-
-              <div className="flex items-center justify-between">
-
-                <div>
-
-                  <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
-                    Selected Stock
-                  </p>
-
-                  <h2 className="text-xl font-bold text-slate-900 mt-1">
-                    {selectedStock.symbol?.replace(
-                      ".NS",
-                      ""
-                    )}
-                  </h2>
-
-                  <p className="text-sm text-slate-400 mt-1">
-                    {selectedStock.company ||
-                      selectedStock.name ||
-                      ""}
-                  </p>
-
-                </div>
-
-                <div className="text-right">
-
-                  <p className="text-2xl font-bold text-slate-900">
-
-                    {selectedStock.price != null
-                      ? `₹${Number(
-                          selectedStock.price
-                        ).toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                        })}`
-                      : "N/A"}
-
-                  </p>
-
-                  {selectedStock.price != null &&
-                    selectedStock.previousClose != null && (
-
-                      <p
-                        className={`text-sm font-semibold mt-1 ${
-                          selectedStock.price >=
-                          selectedStock.previousClose
-                            ? "text-emerald-600"
-                            : "text-red-600"
-                        }`}
-                      >
-
-                        {selectedStock.price >=
-                        selectedStock.previousClose
-                          ? "▲"
-                          : "▼"}{" "}
-
-                        {Math.abs(
-                          ((selectedStock.price -
-                            selectedStock.previousClose) /
-                            selectedStock.previousClose) *
-                            100
-                        ).toFixed(2)}
-                        % today
-
-                      </p>
-
-                    )}
-
-                </div>
-
-              </div>
-
-            </div>
-          )}
+          
 
           {/* Greeting */}
 
