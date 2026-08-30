@@ -8,7 +8,8 @@ from app.services.yahoo_service import (
     get_stock_history,
     get_nifty,
     get_sensex,
-    get_market_movers
+    get_market_movers,
+    search_stock_symbols
 )
 
 router = APIRouter()
@@ -59,3 +60,8 @@ def sensex():
 @router.get("/movers")
 def movers():
     return get_market_movers()
+
+
+@router.get("/search")
+def search_stocks(query: str):
+    return search_stock_symbols(query)

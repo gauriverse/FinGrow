@@ -1,149 +1,262 @@
 import React, { useEffect, useState, useRef } from "react";
-import { getNifty, getSensex, getStock } from "../../services/marketService";
+import {
+  getNifty,
+  getSensex,
+  getMarketMovers,
+  searchStocks,
+  getStock,
+} from "../../services/marketService";
 import { useNavigate } from "react-router-dom";
-import { LineChart, Line, XAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { FiMenu, FiX, FiSettings, FiLogOut, FiUser } from "react-icons/fi";
+import {
+  FiSettings,
+  FiLogOut,
+} from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 import { getPortfolioSummary } from "../../services/portfolioService";
-
-// Dummy data — replace with real portfolio history from your DB later
-const performanceData = [
-  { day: "Day 1", ai: 100, me: 100 },
-  { day: "Day 3", ai: 102, me: 101 },
-  { day: "Day 5", ai: 101, me: 101.5 },
-  { day: "Day 7", ai: 106, me: 102 },
-  { day: "Day 9", ai: 105, me: 101.8 },
-  { day: "Day 11", ai: 110, me: 103.5 },
-  { day: "Day 13", ai: 108.5, me: 103 },
-  { day: "Day 15", ai: 112, me: 105 },
-  { day: "Day 17", ai: 114.5, me: 106.2 },
-  { day: "Day 19", ai: 113.5, me: 106 },
-];
-
-// Profile shape (JSX file — kept as comment instead of TypeScript interface)
-// { full_name: string | null }
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
-  const [range, setRange] = useState("1M");
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const profileRef = useRef(null);
 
   const [nifty, setNifty] = useState(null);
   const [sensex, setSensex] = useState(null);
-  const [tcs, setTcs] = useState(null);
-
+  const [marketMovers, setMarketMovers] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+
+  // =====================================================
+  // STOCK SEARCH
+  // =====================================================
+
   useEffect(() => {
-  const loadDashboard = async () => {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    const searchStocksWithDelay = async () => {
+      const query = searchQuery.trim();
 
-  if (userError || !user) {
-    navigate("/login");
-    return;
-  }
+      if (!query) {
+        setSearchResults([]);
+        return;
+      }
 
-  // ---------------- PROFILE ----------------
+      try {
+        setSearchLoading(true);
 
-  const { data: profileData, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("user_id", user.id)
-      .maybeSingle();
+        const results = await searchStocks(query);
 
-  if (!profileError) {
-    setProfile({
-      full_name: profileData?.full_name,
-      email: user.email,
-    });
-  }
+        setSearchResults(results);
+      } catch (error) {
+        console.error("Stock search failed:", error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
 
-  // ---------------- MARKET + PORTFOLIO ----------------
+    const timer = setTimeout(searchStocksWithDelay, 300);
 
-  const [
-    niftyResult,
-    sensexResult,
-    tcsResult,
-    portfolioResult,
-  ] = await Promise.allSettled([
-    getNifty(),
-    getSensex(),
-    getStock("TCS.NS"),
-    getPortfolioSummary(),
-  ]);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // NIFTY
-  if (niftyResult.status === "fulfilled") {
-    setNifty(niftyResult.value);
-  } else {
-    console.error("Nifty failed:", niftyResult.reason);
-  }
+  // =====================================================
+  // LOAD DASHBOARD
+  // =====================================================
 
-  // SENSEX
-  if (sensexResult.status === "fulfilled") {
-    setSensex(sensexResult.value);
-  } else {
-    console.error("Sensex failed:", sensexResult.reason);
-  }
+  useEffect(() => {
+    const loadDashboard = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-  // TCS
-  if (tcsResult.status === "fulfilled") {
-    setTcs(tcsResult.value);
-  } else {
-    console.error("TCS failed:", tcsResult.reason);
-  }
+      if (userError || !user) {
+        navigate("/login");
+        return;
+      }
 
-  // PORTFOLIO
-  if (portfolioResult.status === "fulfilled") {
-    setPortfolio(portfolioResult.value);
-  } else {
-    console.error("Portfolio failed:", portfolioResult.reason);
-  }
-};
+      // =================================================
+      // PROFILE
+      // =================================================
 
-  loadDashboard();
-}, []);
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!profileError) {
+        setProfile({
+          full_name: profileData?.full_name,
+          email: user.email,
+        });
+      }
+
+      // =================================================
+      // MARKET + PORTFOLIO
+      // =================================================
+
+      const [
+        niftyResult,
+        sensexResult,
+        moversResult,
+        portfolioResult,
+      ] = await Promise.allSettled([
+        getNifty(),
+        getSensex(),
+        getMarketMovers(),
+        getPortfolioSummary(),
+      ]);
+
+      // NIFTY
+      if (niftyResult.status === "fulfilled") {
+        setNifty(niftyResult.value);
+      } else {
+        console.error(
+          "Nifty failed:",
+          niftyResult.reason
+        );
+      }
+
+      // SENSEX
+      if (sensexResult.status === "fulfilled") {
+        setSensex(sensexResult.value);
+      } else {
+        console.error(
+          "Sensex failed:",
+          sensexResult.reason
+        );
+      }
+
+      // MARKET MOVERS
+      if (moversResult.status === "fulfilled") {
+        setMarketMovers(moversResult.value);
+      } else {
+        console.error(
+          "Market movers failed:",
+          moversResult.reason
+        );
+      }
+
+      // PORTFOLIO
+      if (portfolioResult.status === "fulfilled") {
+        setPortfolio(portfolioResult.value);
+      } else {
+        console.error(
+          "Portfolio failed:",
+          portfolioResult.reason
+        );
+      }
+    };
+
+    loadDashboard();
+  }, [navigate]);
+
+  // =====================================================
+  // CLOSE PROFILE DROPDOWN
+  // =====================================================
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target)
+      ) {
         setProfileOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
     };
   }, []);
-  const fullName = profile?.full_name?.trim() || "";
+
+  // =====================================================
+  // SELECT STOCK
+  // =====================================================
+
+  const handleStockSelect = async (stock) => {
+    try {
+      console.log("Selected stock:", stock.symbol);
+
+      const data = await getStock(stock.symbol);
+
+      console.log("Stock data:", data);
+
+      // Save the returned stock data
+      setSelectedStock(data);
+
+      // Put selected symbol in search box
+      setSearchQuery(stock.symbol);
+
+      // Close dropdown
+      setSearchResults([]);
+    } catch (error) {
+      console.error(
+        "Failed to load stock:",
+        error
+      );
+    }
+  };
+
+  // =====================================================
+  // USER INFO
+  // =====================================================
+
+  const fullName =
+    profile?.full_name?.trim() || "";
+
   const nameParts = fullName.split(/\s+/);
 
-  const firstName = nameParts[0] || "there";
+  const firstName =
+    nameParts[0] || "there";
 
   const initials =
     nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : nameParts[0]?.slice(0, 2);
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  // =====================================================
+  // DATE
+  // =====================================================
+
+  const today = new Date().toLocaleDateString(
+    "en-US",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }
+  );
+
+  // =====================================================
+  // NAV ITEMS
+  // =====================================================
 
   const navItems = [
     "Dashboard",
@@ -156,10 +269,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] font-sans">
-      {/* --- SIDEBAR --- */}
-      {/* --- SIDEBAR --- */}
+
+      {/* =====================================================
+          SIDEBAR
+      ===================================================== */}
+
       <>
-        {/* Overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black/30 z-40"
@@ -169,12 +284,20 @@ export default function Dashboard() {
 
         <aside
           className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
-    transform transition-transform duration-300 ease-in-out
-    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+          transform transition-transform duration-300 ease-in-out
+          ${
+            sidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }`}
         >
-          {/* Logo + Close */}
+
+          {/* Logo */}
+
           <div className="flex items-center justify-between px-6 py-6">
+
             <div className="flex items-center gap-2">
+
               <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
                 F
               </div>
@@ -182,6 +305,7 @@ export default function Dashboard() {
               <span className="font-bold text-lg text-white font-serif tracking-tight">
                 FinGrow
               </span>
+
             </div>
 
             <button
@@ -190,22 +314,33 @@ export default function Dashboard() {
             >
               ✕
             </button>
+
           </div>
 
+          {/* Navigation */}
+
           <nav className="flex-1 px-3 space-y-1">
+
             {navItems.map((item) => {
-              const active = item === "Dashboard";
+
+              const active =
+                item === "Dashboard";
 
               return (
                 <button
                   key={item}
                   onClick={() => {
+
                     if (item === "Dashboard") {
                       setSidebarOpen(false);
                       return;
                     }
 
-                    // navigate(`/${item.toLowerCase().replace(" ", "-")}`);
+                    if (item === "Settings") {
+                      setSidebarOpen(false);
+                      navigate("/settings");
+                    }
+
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
                     active
@@ -213,95 +348,213 @@ export default function Dashboard() {
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
+
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      active ? "bg-white" : "bg-slate-500"
+                      active
+                        ? "bg-white"
+                        : "bg-slate-500"
                     }`}
                   />
 
                   {item}
+
                 </button>
               );
             })}
+
           </nav>
 
           <div className="px-6 py-6 border-t border-white/10">
+
             <p className="text-[11px] text-slate-500">
               Paper trading · virtual funds only
             </p>
+
           </div>
+
         </aside>
       </>
 
-      {/* --- MAIN CONTENT --- */}
+      {/* =====================================================
+          MAIN CONTENT
+      ===================================================== */}
+
       <div className="flex-1 flex flex-col">
-        {/* Top bar */}
+
+        {/* =====================================================
+            TOP BAR
+        ===================================================== */}
+
         <header className="flex items-center justify-between px-10 py-5 border-b border-slate-200 bg-white">
+
           <div className="flex items-center gap-4">
-            {/* Hamburger Menu */}
+
+            {/* Hamburger */}
+
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() =>
+                setSidebarOpen(true)
+              }
               className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
               aria-label="Open menu"
             >
               ☰
             </button>
 
-            <input
-              type="text"
-              placeholder="Search stocks..."
-              className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
-            />
+            {/* Search */}
+
+            <div className="relative">
+
+              <input
+                type="text"
+                placeholder="Search stocks..."
+                value={searchQuery}
+                onChange={(e) =>
+                  setSearchQuery(e.target.value)
+                }
+                className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
+              />
+
+              {searchQuery && (
+                <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+
+                  {searchLoading && (
+                    <p className="px-4 py-3 text-sm text-slate-400">
+                      Searching...
+                    </p>
+                  )}
+
+                  {!searchLoading &&
+                    searchResults.length === 0 && (
+                      <p className="px-4 py-3 text-sm text-slate-400">
+                        No stocks found
+                      </p>
+                    )}
+
+                  {!searchLoading &&
+                    searchResults.map((stock) => (
+
+                      <button
+                        key={stock.symbol}
+                        onClick={() =>
+                          handleStockSelect(stock)
+                        }
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 cursor-pointer transition"
+                      >
+
+                        <p className="font-semibold text-sm text-slate-900">
+                          {stock.symbol.replace(
+                            ".NS",
+                            ""
+                          )}
+                        </p>
+
+                        <p className="text-xs text-slate-400">
+                          {stock.name}
+                        </p>
+
+                      </button>
+
+                    ))}
+
+                </div>
+              )}
+
+            </div>
+
           </div>
 
+          {/* Right side */}
+
           <div className="flex items-center gap-6">
+
+            {/* Wallet */}
+
             <div className="text-right">
+
               <p className="text-[10px] font-semibold text-slate-400 tracking-wide">
                 WALLET
               </p>
+
               <p className="text-sm font-bold text-slate-800">
-               {portfolio
-              ? `₹${Number(portfolio.available_balance).toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                })}`
-              : "Loading..."}
+
+                {portfolio
+                  ? `₹${Number(
+                      portfolio.available_balance
+                    ).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}`
+                  : "Loading..."}
+
               </p>
+
             </div>
+
+            {/* Notification */}
+
             <button className="w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-lg">
               🔔
             </button>
-            <div ref={profileRef} className="relative">
+
+            {/* Profile */}
+
+            <div
+              ref={profileRef}
+              className="relative"
+            >
+
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
+                onClick={() =>
+                  setProfileOpen(!profileOpen)
+                }
                 className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition"
               >
-                {initials ? initials.toUpperCase() : "U"}
+                {initials
+                  ? initials.toUpperCase()
+                  : "U"}
               </button>
 
               {profileOpen && (
+
                 <div className="absolute right-0 top-12 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+
                   {/* User info */}
+
                   <div className="px-4 py-4 border-b border-slate-100">
+
                     <div className="flex items-center gap-3">
+
                       <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
-                        {initials ? initials.toUpperCase() : "U"}
+                        {initials
+                          ? initials.toUpperCase()
+                          : "U"}
                       </div>
 
                       <div className="min-w-0">
+
                         <p className="font-semibold text-slate-900 truncate">
-                          {firstName === "there" ? "User" : firstName}
+                          {firstName === "there"
+                            ? "User"
+                            : firstName}
                         </p>
 
                         <p className="text-xs text-slate-400 truncate">
                           {profile?.email || ""}
                         </p>
+
                       </div>
+
                     </div>
+
                   </div>
 
                   {/* Settings */}
+
                   <button
-                    onClick={() => navigate("/settings")}
+                    onClick={() =>
+                      navigate("/settings")
+                    }
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
                   >
                     <FiSettings size={17} />
@@ -309,6 +562,7 @@ export default function Dashboard() {
                   </button>
 
                   {/* Logout */}
+
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
@@ -316,247 +570,538 @@ export default function Dashboard() {
                     <FiLogOut size={17} />
                     Logout
                   </button>
+
                 </div>
+
               )}
+
             </div>
+
           </div>
+
         </header>
 
-        <main className="flex-1 px-10 py-8 space-y-6">
+        {/* =====================================================
+            DASHBOARD
+        ===================================================== */}
+
+        <main className="flex-1 px-10 py-7 space-y-5">
+
+          {/* =====================================================
+              SELECTED STOCK
+          ===================================================== */}
+
+          {selectedStock && (
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+
+                  <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+                    Selected Stock
+                  </p>
+
+                  <h2 className="text-xl font-bold text-slate-900 mt-1">
+                    {selectedStock.symbol?.replace(
+                      ".NS",
+                      ""
+                    )}
+                  </h2>
+
+                  <p className="text-sm text-slate-400 mt-1">
+                    {selectedStock.company ||
+                      selectedStock.name ||
+                      ""}
+                  </p>
+
+                </div>
+
+                <div className="text-right">
+
+                  <p className="text-2xl font-bold text-slate-900">
+
+                    {selectedStock.price != null
+                      ? `₹${Number(
+                          selectedStock.price
+                        ).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}`
+                      : "N/A"}
+
+                  </p>
+
+                  {selectedStock.price != null &&
+                    selectedStock.previousClose != null && (
+
+                      <p
+                        className={`text-sm font-semibold mt-1 ${
+                          selectedStock.price >=
+                          selectedStock.previousClose
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                        }`}
+                      >
+
+                        {selectedStock.price >=
+                        selectedStock.previousClose
+                          ? "▲"
+                          : "▼"}{" "}
+
+                        {Math.abs(
+                          ((selectedStock.price -
+                            selectedStock.previousClose) /
+                            selectedStock.previousClose) *
+                            100
+                        ).toFixed(2)}
+                        % today
+
+                      </p>
+
+                    )}
+
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* Greeting */}
+
           <div>
+
             <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
               {today}
             </p>
+
             <h1 className="text-3xl font-serif font-semibold text-slate-900 mt-1">
               Hello, {firstName} 👋
             </h1>
+
           </div>
 
-          {/* Stat cards */}
+          {/* =====================================================
+    SELECTED STOCK
+===================================================== */}
+
+{selectedStock && (
+  <div className="bg-white rounded-xl border border-slate-200 p-5">
+
+    <div className="flex items-start justify-between">
+
+      <div>
+        <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+          Selected Stock
+        </p>
+
+        <h2 className="text-2xl font-bold text-slate-900 mt-1">
+          {selectedStock.symbol.replace(".NS", "")}
+        </h2>
+
+        <p className="text-sm text-slate-400 mt-1">
+          {selectedStock.company}
+        </p>
+      </div>
+
+      <div className="text-right">
+
+        <p className="text-2xl font-bold text-slate-900">
+          {selectedStock.price != null
+            ? `₹${Number(selectedStock.price).toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+              })}`
+            : "N/A"}
+        </p>
+
+        {selectedStock.open != null &&
+          selectedStock.price != null && (
+            <p
+              className={`text-sm font-semibold mt-1 ${
+                selectedStock.price >= selectedStock.open
+                  ? "text-emerald-600"
+                  : "text-red-600"
+              }`}
+            >
+              {selectedStock.price >= selectedStock.open ? "▲" : "▼"}{" "}
+              {Math.abs(
+                ((selectedStock.price - selectedStock.open) /
+                  selectedStock.open) *
+                  100
+              ).toFixed(2)}
+              % today
+            </p>
+          )}
+
+      </div>
+
+    </div>
+
+    <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-slate-100">
+
+      <div>
+        <p className="text-xs text-slate-400">Previous Close</p>
+        <p className="text-sm font-semibold text-slate-800 mt-1">
+          {selectedStock.previousClose != null
+            ? `₹${Number(selectedStock.previousClose).toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+              })}`
+            : "N/A"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs text-slate-400">Open</p>
+        <p className="text-sm font-semibold text-slate-800 mt-1">
+          {selectedStock.open != null
+            ? `₹${Number(selectedStock.open).toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+              })}`
+            : "N/A"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs text-slate-400">Exchange</p>
+        <p className="text-sm font-semibold text-slate-800 mt-1">
+          NSE
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+)}
+
+          {/* =====================================================
+              STAT CARDS
+          ===================================================== */}
+
           <div className="grid grid-cols-3 gap-5">
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
+
+            {/* Portfolio */}
+
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+
               <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
                 Total Portfolio Value
               </p>
+
               <p className="text-2xl font-bold text-slate-900 mt-2">
+
                 {portfolio
-                  ? `₹${Number(portfolio.total_value).toLocaleString("en-IN", {
+                  ? `₹${Number(
+                      portfolio.total_value
+                    ).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                     })}`
                   : "Loading..."}
+
               </p>
 
               <p
                 className={`text-xs font-semibold mt-1 ${
-                  portfolio && portfolio.overall_pnl >= 0
+                  portfolio &&
+                  portfolio.overall_pnl >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
                 }`}
               >
+
                 {portfolio
-                  ? `${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
-                      Number(portfolio.overall_pnl),
+                  ? `${
+                      portfolio.overall_pnl >= 0
+                        ? "▲ +"
+                        : "▼ -"
+                    }₹${Math.abs(
+                      Number(
+                        portfolio.overall_pnl
+                      )
                     ).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                     })} overall`
                   : "Loading..."}
+
               </p>
+
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
+            {/* Today's P&L */}
+
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+
               <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
                 Today's P&L
               </p>
+
               <p className="text-2xl font-bold text-slate-900 mt-2">
+
                 {portfolio
-                  ? `${portfolio.today_pnl >= 0 ? "+" : "-"}₹${Math.abs(
-                      Number(portfolio.today_pnl),
-                    ).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                  ? `${
+                      portfolio.today_pnl >= 0
+                        ? "+"
+                        : "-"
+                    }₹${Math.abs(
+                      Number(
+                        portfolio.today_pnl
+                      )
+                    ).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}`
                   : "Loading..."}
+
               </p>
+
               <p
                 className={`text-xs font-semibold mt-1 ${
-                  portfolio && portfolio.today_pnl >= 0
+                  portfolio &&
+                  portfolio.today_pnl >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
                 }`}
               >
+
                 {portfolio
-                  ? `${portfolio.today_pnl >= 0 ? "▲ +" : "▼ "}${Math.abs(
-                      Number(portfolio.today_pnl_percent),
+                  ? `${
+                      portfolio.today_pnl >= 0
+                        ? "▲ +"
+                        : "▼ "
+                    }${Math.abs(
+                      Number(
+                        portfolio.today_pnl_percent
+                      )
                     ).toFixed(2)}% today`
                   : "Loading..."}
+
               </p>
+
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
+            {/* Market */}
+
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+
               <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
                 Market Today
               </p>
 
               <p className="text-2xl font-bold text-slate-900 mt-2">
+
                 {nifty?.price
-                  ? `₹${Number(nifty.price).toLocaleString("en-IN", {
+                  ? `₹${Number(
+                      nifty.price
+                    ).toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                     })}`
                   : "Loading..."}
+
               </p>
 
               <p
                 className={`text-xs font-semibold mt-1 ${
-                  nifty && nifty.price >= nifty.open
+                  nifty &&
+                  nifty.price >= nifty.open
                     ? "text-emerald-600"
                     : "text-red-600"
                 }`}
               >
+
                 {nifty
-                  ? `${nifty.price >= nifty.open ? "▲ +" : "▼ "}${Math.abs(
-                      ((nifty.price - nifty.open) / nifty.open) * 100,
+                  ? `${
+                      nifty.price >= nifty.open
+                        ? "▲ +"
+                        : "▼ "
+                    }${Math.abs(
+                      ((nifty.price - nifty.open) /
+                        nifty.open) *
+                        100
                     ).toFixed(2)}% today`
                   : "Loading..."}
+
               </p>
 
-              <p className="text-[11px] text-slate-400 mt-1">NIFTY 50</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                NIFTY 50
+              </p>
+
             </div>
+
           </div>
 
-          {/* Performance chart */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
+          {/* =====================================================
+              MARKET STOCKS
+          ===================================================== */}
+
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+
             <div className="flex items-center justify-between mb-4">
+
               <div>
+
                 <h2 className="text-lg font-serif font-semibold text-slate-900">
-                  Portfolio performance
+                  Market Stocks
                 </h2>
-                <div className="flex items-center gap-4 mt-2 text-xs font-medium text-slate-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-0.5 bg-[#0F4C3A] inline-block rounded" />
-                    AI Portfolio
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-0.5 bg-[#1E3A8A] inline-block rounded" />
-                    My Portfolio
-                  </span>
-                </div>
+
+                <p className="text-xs text-slate-400 mt-1">
+                  Live market prices
+                </p>
+
               </div>
-              <div className="flex gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
-                {["1D", "1W", "1M", "3M", "1Y"].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRange(r)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
-                      range === r
-                        ? "bg-white shadow-sm text-slate-800"
-                        : "text-slate-400 hover:text-slate-600"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
+
             </div>
 
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={performanceData}>
-                  <XAxis dataKey="day" hide />
-                  <Tooltip
-                    contentStyle={{
-                      fontSize: "12px",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="ai"
-                    stroke="#0F4C3A"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="me"
-                    stroke="#1E3A8A"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {!marketMovers ? (
+
+              <p className="text-sm text-slate-400">
+                Loading stocks...
+              </p>
+
+            ) : (
+
+              <div className="grid grid-cols-2 gap-6">
+
+                {/* =================================================
+                    TOP GAINERS
+                ================================================= */}
+
+                <div>
+
+                  <h3 className="text-sm font-semibold text-slate-700 mb-2">
+                    Top Gainers
+                  </h3>
+
+                  <div className="space-y-2">
+
+                    {marketMovers.gainers
+                      ?.slice(0, 3)
+                      .map((stock) => (
+
+                        <div
+                          key={stock.symbol}
+                          className="border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between"
+                        >
+
+                          <div className="flex items-center gap-4">
+
+                            <div>
+
+                              <p className="font-semibold text-sm text-slate-900">
+                                {stock.symbol.replace(
+                                  ".NS",
+                                  ""
+                                )}
+                              </p>
+
+                              <p className="text-[11px] text-slate-400">
+                                NSE
+                              </p>
+
+                            </div>
+
+                            <p className="text-base font-bold text-slate-900">
+                              ₹
+                              {Number(
+                                stock.price
+                              ).toLocaleString(
+                                "en-IN",
+                                {
+                                  minimumFractionDigits: 2,
+                                }
+                              )}
+                            </p>
+
+                          </div>
+
+                          <span className="text-xs font-semibold text-emerald-600">
+                            ▲ {stock.change_percent}%
+                          </span>
+
+                        </div>
+
+                      ))}
+
+                  </div>
+
+                </div>
+
+                {/* =================================================
+                    TOP LOSERS
+                ================================================= */}
+
+                <div>
+
+                  <h3 className="text-sm font-semibold text-slate-700 mb-2">
+                    Top Losers
+                  </h3>
+
+                  <div className="space-y-2">
+
+                    {marketMovers.losers
+                      ?.slice(0, 3)
+                      .map((stock) => (
+
+                        <div
+                          key={stock.symbol}
+                          className="border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between"
+                        >
+
+                          <div className="flex items-center gap-4">
+
+                            <div>
+
+                              <p className="font-semibold text-sm text-slate-900">
+                                {stock.symbol.replace(
+                                  ".NS",
+                                  ""
+                                )}
+                              </p>
+
+                              <p className="text-[11px] text-slate-400">
+                                NSE
+                              </p>
+
+                            </div>
+
+                            <p className="text-base font-bold text-slate-900">
+                              ₹
+                              {Number(
+                                stock.price
+                              ).toLocaleString(
+                                "en-IN",
+                                {
+                                  minimumFractionDigits: 2,
+                                }
+                              )}
+                            </p>
+
+                          </div>
+
+                          <span className="text-xs font-semibold text-red-600">
+                            ▼{" "}
+                            {Math.abs(
+                              stock.change_percent
+                            )}
+                            %
+                          </span>
+
+                        </div>
+
+                      ))}
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            )}
+
           </div>
 
-          {/* Bottom row */}
-          <div className="grid grid-cols-2 gap-5">
-            {/* Top AI recommendation */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-4">
-                Top AI Recommendation
-              </p>
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
-                    TCS
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {tcs?.company || "Tata Consultancy Services"}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {tcs?.price
-                        ? `₹${Number(tcs.price).toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                          })}`
-                        : "Loading..."}
-                      <span className="text-emerald-600 font-medium">
-                        ▲1.2%
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-3 py-1">
-                  Confidence 82%
-                </span>
-              </div>
-              <p className="text-sm italic text-slate-500 mt-4 pl-3 border-l-2 border-slate-200">
-                Strong RSI recovery and low overlap with your current Tech
-                holdings.
-              </p>
-              <button
-                onClick={() => navigate("/ai-picks")}
-                className="mt-4 text-sm font-semibold text-slate-800 border border-slate-200 rounded-lg px-4 py-2 hover:bg-slate-50 transition"
-              >
-                View all picks →
-              </button>
-            </div>
-
-            {/* Recent activity */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-4">
-                Recent Activity
-              </p>
-              <ul className="space-y-3">
-                {[
-                  { text: "Bought RELIANCE ×5", time: "10:32 AM" },
-                  { text: "AI flagged TCS", time: "9:15 AM" },
-                  { text: "Sold INFY ×3", time: "Yesterday" },
-                  { text: 'Completed "Reading RSI"', time: "Yesterday" },
-                ].map((activity) => (
-                  <li
-                    key={activity.text}
-                    className="flex items-center justify-between text-sm border-b border-slate-100 last:border-0 pb-3 last:pb-0"
-                  >
-                    <span className="text-slate-700">{activity.text}</span>
-                    <span className="text-xs text-slate-400">
-                      {activity.time}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </main>
+
       </div>
+
     </div>
   );
 }

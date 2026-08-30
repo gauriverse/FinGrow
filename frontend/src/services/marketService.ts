@@ -26,3 +26,12 @@ export const getMarketMovers = async () => {
   const res = await axios.get(`${API}/movers`);
   return res.data;
 };
+
+// SEARCH STOCKS
+export const searchStocks = async (query: string) => {
+  const res = await axios.get(`${API}/search`, {
+    params: { query },
+  });
+
+  return res.data;
+};

@@ -1,4 +1,5 @@
 from importlib import import_module
+import yfinance as yf
 
 
 try:
@@ -132,6 +133,69 @@ def get_market_movers():
     )
 
     return {
-        "gainers": gainers[:5],
-        "losers": losers[:5]
-    }    
+    "gainers": gainers[:3],
+    "losers": losers[:3]
+}
+
+
+def search_stock_symbols(query: str):
+    search = yf.Search(query)
+
+    results = search.quotes
+
+    stocks = []
+
+    for item in results[:8]:
+        symbol = item.get("symbol")
+
+        if not symbol:
+            continue
+
+        # Keep Indian NSE stocks for FinGrow
+        if not symbol.endswith(".NS"):
+            continue
+
+        stocks.append({
+            "symbol": symbol,
+            "name": item.get("longname")
+                    or item.get("shortname")
+                    or symbol,
+        })
+
+    return stocks
+
+def search_stock_symbols(query: str):
+    query = query.strip()
+
+    if not query:
+        return []
+
+    search = yf.Search(query)
+    results = search.quotes
+
+    stocks = []
+
+    for item in results:
+        symbol = item.get("symbol")
+
+        if not symbol:
+            continue
+
+        # FinGrow supports NSE stocks
+        if not symbol.endswith(".NS"):
+            continue
+
+        stocks.append({
+            "symbol": symbol,
+            "name": (
+                item.get("longname")
+                or item.get("shortname")
+                or symbol
+            )
+        })
+
+        # We only need 10 NSE results
+        if len(stocks) >= 10:
+            break
+
+    return stocks
