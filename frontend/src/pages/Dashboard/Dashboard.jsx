@@ -260,11 +260,11 @@ export default function Dashboard() {
                 WALLET
               </p>
               <p className="text-sm font-bold text-slate-800">
-                {portfolio
-                  ? `₹${Number(portfolio.cash_balance).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}`
-                  : "Loading..."}
+               {portfolio
+              ? `₹${Number(portfolio.available_balance).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                })}`
+              : "Loading..."}
               </p>
             </div>
             <button className="w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-lg">

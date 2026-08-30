@@ -13,7 +13,7 @@ def get_or_create_paper_account(user_id: str):
     existing = (
         admin_supabase
         .table("paper_accounts")
-        .select("id, user_id, cash_balance")
+        .select("id, user_id, initial_balance, available_balance")
         .eq("user_id", user_id)
         .maybe_single()
         .execute()
@@ -54,8 +54,9 @@ def get_or_create_paper_account(user_id: str):
         .table("paper_accounts")
         .insert({
             "user_id": user_id,
-            "cash_balance": starting_capital
-        })
+            "initial_balance": starting_capital,       
+            "available_balance": starting_capital
+            })
         .execute()
     )
 
@@ -80,7 +81,7 @@ def get_portfolio_summary(
         # the user's first time opening the dashboard.
         account = get_or_create_paper_account(user_id)
 
-        cash_balance = float(account["cash_balance"])
+        available_balance = float(account["available_balance"])
 
         portfolio_result = (
             admin_supabase
@@ -144,7 +145,7 @@ def get_portfolio_summary(
                         repr(e)
                     )
 
-        total_value = cash_balance + current_value
+        total_value = available_balance + current_value
 
         previous_total_value = total_value - today_pnl
 
@@ -155,7 +156,7 @@ def get_portfolio_summary(
         )
 
         return {
-            "cash_balance": round(cash_balance, 2),
+            "available_balance": round(available_balance, 2),
             "invested_value": round(invested_value, 2),
             "current_value": round(current_value, 2),
             "total_value": round(total_value, 2),
