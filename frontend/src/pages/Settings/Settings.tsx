@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -114,6 +113,8 @@ export default function Settings() {
   const [aiRecommendations, setAiRecommendations] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
   const hasUnsavedChanges =
     JSON.stringify(profile) !== JSON.stringify(originalProfile);
 
@@ -138,6 +139,13 @@ export default function Settings() {
 
       setUserId(user.id);
       setEmail(user.email ?? "");
+
+      const metadataName =
+        user.user_metadata?.full_name || user.user_metadata?.name || "";
+
+      setAvatarUrl(
+        user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+      );
 
       const { data, error: profileError } = await supabase
         .from("profiles")
@@ -165,14 +173,14 @@ export default function Settings() {
 
       if (data) {
         const loadedProfile: ProfileData = {
-          full_name: data.full_name ?? "",
-          age: data.age?.toString() ?? "",
-          occupation: data.occupation ?? "",
-          monthly_income: data.monthly_income?.toString() ?? "",
-          investment_goal: data.investment_goal ?? "",
-          risk_level: data.risk_level ?? "",
-          investment_experience: data.investment_experience ?? "",
-          investment_horizon: data.investment_horizon ?? "",
+          full_name: data?.full_name || metadataName,
+          age: data?.age?.toString() ?? "",
+          occupation: data?.occupation ?? "",
+          monthly_income: data?.monthly_income?.toString() ?? "",
+          investment_goal: data?.investment_goal ?? "",
+          risk_level: data?.risk_level ?? "",
+          investment_experience: data?.investment_experience ?? "",
+          investment_horizon: data?.investment_horizon ?? "",
         };
 
         setProfile(loadedProfile);
@@ -189,10 +197,7 @@ export default function Settings() {
   // HELPERS
   // =========================================================
 
-  const updateProfile = (
-    field: keyof ProfileData,
-    value: string,
-  ) => {
+  const updateProfile = (field: keyof ProfileData, value: string) => {
     setProfile((prev) => ({
       ...prev,
       [field]: value,
@@ -240,12 +245,7 @@ export default function Settings() {
       return;
     }
 
-    if (
-      !profile.age ||
-      !Number.isInteger(age) ||
-      age < 18 ||
-      age > 100
-    ) {
+    if (!profile.age || !Number.isInteger(age) || age < 18 || age > 100) {
       setError("Age must be between 18 and 100.");
       return;
     }
@@ -308,10 +308,9 @@ export default function Settings() {
 
     setPasswordSaving(true);
 
-    const { error: passwordError } =
-      await supabase.auth.updateUser({
-        password: newPassword,
-      });
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
 
     if (passwordError) {
       console.error("Password update failed:", passwordError);
@@ -410,13 +409,19 @@ export default function Settings() {
             <p className="text-sm font-semibold text-slate-800">
               {profile.full_name || "User"}
             </p>
-            <p className="text-xs text-slate-400">
-              {email}
-            </p>
+            <p className="text-xs text-slate-400">{email}</p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
-            {getInitials()}
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={profile.full_name || "Profile"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              getInitials()
+            )}
           </div>
         </div>
       </header>
@@ -532,8 +537,16 @@ export default function Settings() {
                 <div className="p-6 md:p-8">
                   {/* Avatar */}
                   <div className="flex items-center gap-4 mb-8">
-                    <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-xl font-bold text-[#0F4C3A]">
-                      {getInitials()}
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-xl font-bold text-[#0F4C3A]">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={profile.full_name || "Profile"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        getInitials()
+                      )}
                     </div>
 
                     <div>
@@ -551,9 +564,7 @@ export default function Settings() {
                     <InputField
                       label="Full Name"
                       value={profile.full_name}
-                      onChange={(value) =>
-                        updateProfile("full_name", value)
-                      }
+                      onChange={(value) => updateProfile("full_name", value)}
                       placeholder="Your full name"
                     />
 
@@ -579,18 +590,14 @@ export default function Settings() {
                       min="18"
                       max="100"
                       value={profile.age}
-                      onChange={(value) =>
-                        updateProfile("age", value)
-                      }
+                      onChange={(value) => updateProfile("age", value)}
                       placeholder="Enter your age"
                     />
 
                     <SelectField
                       label="Occupation"
                       value={profile.occupation}
-                      onChange={(value) =>
-                        updateProfile("occupation", value)
-                      }
+                      onChange={(value) => updateProfile("occupation", value)}
                       options={occupationOptions}
                       placeholder="Select occupation"
                     />
@@ -640,9 +647,7 @@ export default function Settings() {
                     <SelectField
                       label="Risk Level"
                       value={profile.risk_level}
-                      onChange={(value) =>
-                        updateProfile("risk_level", value)
-                      }
+                      onChange={(value) => updateProfile("risk_level", value)}
                       options={riskOptions}
                       placeholder="Select your risk level"
                     />
@@ -732,16 +737,12 @@ export default function Settings() {
                     <button
                       onClick={handlePasswordUpdate}
                       disabled={
-                        passwordSaving ||
-                        !newPassword ||
-                        !confirmPassword
+                        passwordSaving || !newPassword || !confirmPassword
                       }
                       className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C3A] text-white text-sm font-semibold hover:bg-[#0B3528] disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                       <FiShield size={15} />
-                      {passwordSaving
-                        ? "Updating..."
-                        : "Update Password"}
+                      {passwordSaving ? "Updating..." : "Update Password"}
                     </button>
                   </div>
 
@@ -777,8 +778,8 @@ export default function Settings() {
                         </h3>
 
                         <p className="text-xs text-red-600/70 mt-1 leading-relaxed">
-                          Permanently delete your FinGrow account and
-                          associated data. This action cannot be undone.
+                          Permanently delete your FinGrow account and associated
+                          data. This action cannot be undone.
                         </p>
 
                         <button
@@ -807,33 +808,27 @@ export default function Settings() {
                     title="Email notifications"
                     description="Receive important account and platform updates."
                     enabled={emailNotifications}
-                    onToggle={() =>
-                      setEmailNotifications((prev) => !prev)
-                    }
+                    onToggle={() => setEmailNotifications((prev) => !prev)}
                   />
 
                   <PreferenceRow
                     title="Market alerts"
                     description="Get notified about important market movements."
                     enabled={marketAlerts}
-                    onToggle={() =>
-                      setMarketAlerts((prev) => !prev)
-                    }
+                    onToggle={() => setMarketAlerts((prev) => !prev)}
                   />
 
                   <PreferenceRow
                     title="AI recommendations"
                     description="Receive updates when new AI-powered picks are available."
                     enabled={aiRecommendations}
-                    onToggle={() =>
-                      setAiRecommendations((prev) => !prev)
-                    }
+                    onToggle={() => setAiRecommendations((prev) => !prev)}
                   />
 
                   <div className="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-400">
-                    Notification preferences are currently stored locally
-                    in this interface. Persistent notification settings can
-                    be connected to Supabase when the notification system is
+                    Notification preferences are currently stored locally in
+                    this interface. Persistent notification settings can be
+                    connected to Supabase when the notification system is
                     implemented.
                   </div>
                 </div>
@@ -858,9 +853,9 @@ export default function Settings() {
 
                   {darkMode && (
                     <div className="mt-4 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
-                      Dark mode preference is currently a UI preview.
-                      A full application-wide theme can be connected once
-                      FinGrow has a global theme provider.
+                      Dark mode preference is currently a UI preview. A full
+                      application-wide theme can be connected once FinGrow has a
+                      global theme provider.
                     </div>
                   )}
                 </div>
@@ -920,9 +915,7 @@ function SectionHeader({
         {title}
       </h2>
 
-      <p className="text-sm text-slate-400 mt-1">
-        {description}
-      </p>
+      <p className="text-sm text-slate-400 mt-1">{description}</p>
     </div>
   );
 }
@@ -1051,9 +1044,7 @@ function SaveBar({
   return (
     <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
       <p className="text-xs text-slate-400">
-        {disabled
-          ? "All changes are saved."
-          : "You have unsaved changes."}
+        {disabled ? "All changes are saved." : "You have unsaved changes."}
       </p>
 
       <button
@@ -1091,13 +1082,9 @@ function PreferenceRow({
   return (
     <div className="flex items-center justify-between gap-6 py-5 border-b border-slate-100 last:border-b-0">
       <div>
-        <h3 className="text-sm font-semibold text-slate-800">
-          {title}
-        </h3>
+        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
 
-        <p className="text-xs text-slate-400 mt-1 max-w-xl">
-          {description}
-        </p>
+        <p className="text-xs text-slate-400 mt-1 max-w-xl">{description}</p>
       </div>
 
       <button
