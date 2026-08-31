@@ -8,6 +8,7 @@ import { Onboarding } from "../pages/Onboarding/Onboarding";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
 import PersonalizedLanding from "../pages/PersonalizedLanding/PersonalizedLanding";
+import Settings from "../pages/Settings/Settings";
 
 export default function AppRoutes() {
   return (
@@ -31,6 +32,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />
