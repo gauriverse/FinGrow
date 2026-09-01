@@ -232,9 +232,8 @@ export default function Landing() {
             </span>
           </h1>
           <p className="text-base text-slate-600 max-w-lg leading-relaxed">
-            Al-powered paper trading that explains every recommendation in plain
-            English — practice with ₹10,00,000 in virtual capital before a rupee
-            of your own is on the line.
+            AI-powered paper trading that explains every recommendation in plain
+English — practice with virtual money before a rupee of your own is on the line.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Link
@@ -334,7 +333,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-slate-800">
           <div className="py-4 md:py-0">
             <h3 className="text-3xl font-bold font-mono tracking-tight text-white mb-1">
-              ₹10,00,000
+              Start with ₹500
             </h3>
             <p className="text-xs text-slate-400 font-medium tracking-wide">
               virtual capital to start
