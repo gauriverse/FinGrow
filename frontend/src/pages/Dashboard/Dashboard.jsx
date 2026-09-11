@@ -94,8 +94,6 @@ export default function Dashboard() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Get name from profiles first,
-      // then fall back to Google's user metadata.
       const googleName =
         user.user_metadata?.full_name || user.user_metadata?.name || "";
 
@@ -365,7 +363,6 @@ export default function Dashboard() {
               />
 
               {searchQuery &&
-                !selectedStock &&
                 (searchResults.length > 0 || searchLoading) && (
                   <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
                     {searchLoading && (
@@ -502,17 +499,13 @@ export default function Dashboard() {
           </div>
 
           {/* =====================================================
-    SELECTED STOCK
-===================================================== */}
+              SELECTED STOCK
+          ===================================================== */}
 
           {selectedStock && (
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">
-                    Selected Stock
-                  </p>
-
                   <h2 className="text-2xl font-bold text-slate-900 mt-1">
                     {selectedStock.symbol.replace(".NS", "")}
                   </h2>
@@ -534,19 +527,22 @@ export default function Dashboard() {
                       : "N/A"}
                   </p>
 
-                  {selectedStock.open != null &&
+                  {selectedStock.previousClose != null &&
                     selectedStock.price != null && (
                       <p
                         className={`text-sm font-semibold mt-1 ${
-                          selectedStock.price >= selectedStock.open
+                          selectedStock.price >= selectedStock.previousClose
                             ? "text-emerald-600"
                             : "text-red-600"
                         }`}
                       >
-                        {selectedStock.price >= selectedStock.open ? "▲" : "▼"}{" "}
+                        {selectedStock.price >= selectedStock.previousClose
+                          ? "▲"
+                          : "▼"}{" "}
                         {Math.abs(
-                          ((selectedStock.price - selectedStock.open) /
-                            selectedStock.open) *
+                          ((selectedStock.price -
+                            selectedStock.previousClose) /
+                            selectedStock.previousClose) *
                             100,
                         ).toFixed(2)}
                         % today
@@ -677,14 +673,14 @@ export default function Dashboard() {
 
               <p
                 className={`text-xs font-semibold mt-1 ${
-                  nifty && nifty.price >= nifty.open
+                  nifty && nifty.changePercent >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
                 }`}
               >
                 {nifty
-                  ? `${nifty.price >= nifty.open ? "▲ +" : "▼ "}${Math.abs(
-                      ((nifty.price - nifty.open) / nifty.open) * 100,
+                  ? `${nifty.changePercent >= 0 ? "▲ +" : "▼ -"}${Math.abs(
+                      nifty.changePercent
                     ).toFixed(2)}% today`
                   : "Loading..."}
               </p>
@@ -705,7 +701,7 @@ export default function Dashboard() {
                 </h2>
 
                 <p className="text-xs text-slate-400 mt-1">
-                  Live market prices
+                  Latest market prices
                 </p>
               </div>
             </div>

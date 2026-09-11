@@ -14,12 +14,38 @@ def get_stock_data(symbol: str):
     stock = yf.Ticker(symbol)
     info = stock.info
 
+    # Primary price source
+    price = info.get("currentPrice")
+
+    # Fallback for ETFs like NIFTYBEES
+    if price is None:
+        try:
+            price = stock.fast_info.get("lastPrice")
+        except Exception:
+            price = None
+
+    # Final fallback: latest historical close
+    history = stock.history(period="2d")
+
+    if price is None and not history.empty:
+        price = history.iloc[-1]["Close"]
+
+    previous_close = info.get("previousClose")
+    if previous_close is None and len(history) >= 2:
+        previous_close = history.iloc[-2]["Close"]
+
+    open_price = info.get("open")
+    if open_price is None and not history.empty:
+        open_price = history.iloc[-1]["Open"]
+
     return {
         "symbol": symbol.upper(),
         "company": info.get("longName"),
-        "price": info.get("currentPrice"),
-        "previousClose": info.get("previousClose"),
-        "open": info.get("open"),
+        "price": round(float(price), 2) if price is not None else None,
+        "previousClose": round(float(previous_close), 2)
+            if previous_close is not None else None,
+        "open": round(float(open_price), 2)
+            if open_price is not None else None,
         "dayHigh": info.get("dayHigh"),
         "dayLow": info.get("dayLow"),
         "volume": info.get("volume"),
@@ -55,32 +81,57 @@ def get_stock_history(symbol: str):
 def get_nifty():
     stock = yf.Ticker("^NSEI")
 
-    data = stock.history(period="1d")
+    data = stock.history(period="5d")
+
+    if data.empty or len(data) < 2:
+        raise RuntimeError("Not enough NIFTY data available")
 
     latest = data.iloc[-1]
+    previous = data.iloc[-2]
+
+    price = float(latest["Close"])
+    previous_close = float(previous["Close"])
+
+    change = price - previous_close
+    change_percent = (change / previous_close) * 100
 
     return {
         "name": "NIFTY 50",
         "symbol": "^NSEI",
-        "price": round(float(latest["Close"]), 2),
+        "price": round(price, 2),
+        "previousClose": round(previous_close, 2),
+        "change": round(change, 2),
+        "changePercent": round(change_percent, 2),
         "open": round(float(latest["Open"]), 2),
         "high": round(float(latest["High"]), 2),
         "low": round(float(latest["Low"]), 2),
         "volume": int(latest["Volume"])
     }
 
-
 def get_sensex():
     stock = yf.Ticker("^BSESN")
 
-    data = stock.history(period="1d")
+    data = stock.history(period="5d")
+
+    if data.empty or len(data) < 2:
+        raise RuntimeError("Not enough Sensex data available")
 
     latest = data.iloc[-1]
+    previous = data.iloc[-2]
+
+    price = float(latest["Close"])
+    previous_close = float(previous["Close"])
+
+    change = price - previous_close
+    change_percent = (change / previous_close) * 100
 
     return {
         "name": "SENSEX",
         "symbol": "^BSESN",
-        "price": round(float(latest["Close"]), 2),
+        "price": round(price, 2),
+        "previousClose": round(previous_close, 2),
+        "change": round(change, 2),
+        "changePercent": round(change_percent, 2),
         "open": round(float(latest["Open"]), 2),
         "high": round(float(latest["High"]), 2),
         "low": round(float(latest["Low"]), 2),
@@ -90,36 +141,81 @@ def get_sensex():
 def get_market_movers():
 
     symbols = [
-        "RELIANCE.NS",
-        "TCS.NS",
-        "INFY.NS",
-        "HDFCBANK.NS",
-        "ICICIBANK.NS",
-        "SBIN.NS",
-        "ITC.NS",
-        "LT.NS",
-        "BHARTIARTL.NS",
-        "TATAMOTORS.NS"
-    ]
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "BAJFINANCE.NS",
+    "MARUTI.NS",
+    "SUNPHARMA.NS",
+    "TITAN.NS",
+    "ASIANPAINT.NS",
+    "HCLTECH.NS",
+    "WIPRO.NS",
+    "ULTRACEMCO.NS",
+    "M&M.NS",
+    "NTPC.NS",
+    "POWERGRID.NS",
+    "TATASTEEL.NS",
+    "ADANIENT.NS",
+    "ADANIPORTS.NS",
+    "COALINDIA.NS",
+    "ONGC.NS",
+    "JSWSTEEL.NS",
+    "TECHM.NS",
+    "TATAMOTORS.NS",
+    "INDUSINDBK.NS",
+    "BAJAJFINSV.NS",
+    "NESTLEIND.NS",
+    "GRASIM.NS",
+    "HINDALCO.NS",
+    "DRREDDY.NS",
+    "CIPLA.NS",
+    "EICHERMOT.NS",
+    "HEROMOTOCO.NS",
+    "APOLLOHOSP.NS",
+    "BRITANNIA.NS",
+    "DIVISLAB.NS",
+    "BPCL.NS",
+    "IOC.NS",
+    "TATACONSUM.NS",
+    "BEL.NS",
+    "TRENT.NS",
+    "SHRIRAMFIN.NS",
+    "HDFCLIFE.NS"
+]
 
     movers = []
 
     for symbol in symbols:
         stock = yf.Ticker(symbol)
 
-        data = stock.history(period="2d")
+        try:
+            data = stock.history(period="2d")
+        except Exception:
+            continue
 
-        if len(data) >= 2:
-            today = data.iloc[-1]["Close"]
-            yesterday = data.iloc[-2]["Close"]
+        if data.empty or len(data) < 2:
+            continue
 
-            change = ((today - yesterday) / yesterday) * 100
+        today = data.iloc[-1]["Close"]
+        yesterday = data.iloc[-2]["Close"]
 
-            movers.append({
-                "symbol": symbol,
-                "price": round(float(today), 2),
-                "change_percent": round(float(change), 2)
-            })
+        change = ((today - yesterday) / yesterday) * 100
+
+        movers.append({
+            "symbol": symbol,
+            "price": round(float(today), 2),
+            "change_percent": round(float(change), 2)
+        })
 
     gainers = sorted(
         movers,

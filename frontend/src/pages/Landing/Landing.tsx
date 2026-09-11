@@ -9,6 +9,8 @@ type MarketData = {
   name: string;
   price: number;
   open: number;
+  previousClose?: number;
+  changePercent?: number;
 };
 
 export default function Landing() {
@@ -70,10 +72,10 @@ export default function Landing() {
       listener.subscription.unsubscribe();
     };
   }, []);
-  const sensexChange = sensex
-    ? (((sensex.price - sensex.open) / sensex.open) * 100).toFixed(2)
+  const sensexChange =
+  sensex?.changePercent != null
+    ? sensex.changePercent.toFixed(2)
     : null;
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
