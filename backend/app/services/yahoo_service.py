@@ -171,7 +171,8 @@ def get_market_movers():
     "ONGC.NS",
     "JSWSTEEL.NS",
     "TECHM.NS",
-    "TATAMOTORS.NS",
+    "TMPV.NS",
+    "TMCV.NS",
     "INDUSINDBK.NS",
     "BAJAJFINSV.NS",
     "NESTLEIND.NS",
@@ -199,7 +200,7 @@ def get_market_movers():
         stock = yf.Ticker(symbol)
 
         try:
-            data = stock.history(period="2d")
+            data = stock.history(period="5d")
         except Exception:
             continue
 
