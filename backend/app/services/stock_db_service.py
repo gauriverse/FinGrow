@@ -49,3 +49,21 @@ def upsert_stock_history(stock_id: str, history_data: dict):
     )
 
     return result.data
+
+def sync_stock_universe(symbols: list[str]):
+    from app.services.yahoo_service import get_stock_data
+
+    synced = []
+
+    for symbol in symbols:
+        try:
+            stock_data = get_stock_data(symbol)
+            rows = upsert_stock(stock_data)
+
+            if rows:
+                synced.append(rows[0])
+
+        except Exception as e:
+            print(f"Failed to sync {symbol}: {e}")
+
+    return synced

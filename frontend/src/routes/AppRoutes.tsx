@@ -9,6 +9,7 @@ import Dashboard from "../pages/Dashboard/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
 import PersonalizedLanding from "../pages/PersonalizedLanding/PersonalizedLanding";
 import Settings from "../pages/Settings/Settings";
+import AIPicks from "../pages/AIPicks/AIPicks";
 
 export default function AppRoutes() {
   return (
@@ -48,6 +49,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <PersonalizedLanding />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-picks"
+          element={
+            <ProtectedRoute>
+              <AIPicks />
             </ProtectedRoute>
           }
         />

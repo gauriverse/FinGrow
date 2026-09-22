@@ -1,11 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.portfolio_routes import router as portfolio_router
-from app.routes import market_routes, auth_routes
+from app.routes import market_routes, auth_routes, recommendation_routes
+from app.ml.model_loader import model
 
 app = FastAPI()
 app.include_router(market_routes.router, prefix="/market")
-
+app.include_router(
+    recommendation_routes.router,
+    prefix="/recommendations",
+    tags=["Recommendations"]
+)
 
 
 app.include_router(

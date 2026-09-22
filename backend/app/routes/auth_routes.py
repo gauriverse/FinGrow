@@ -58,11 +58,9 @@ def login(data: AuthRequest):
             "user": response.user
         }
 
-    except Exception:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
+    except Exception as e:
+        print("LOGIN ERROR:", repr(e))
+        raise HTTPException(status_code=401, detail=str(e))
 
 @router.post("/logout")
 def logout():

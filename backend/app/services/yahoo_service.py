@@ -1,5 +1,6 @@
 from importlib import import_module
 import yfinance as yf
+import numpy as np
 
 
 try:
@@ -58,7 +59,9 @@ def get_stock_data(symbol: str):
 def get_stock_history(symbol: str):
     stock = yf.Ticker(symbol)
 
-    history = stock.history(period="1y")
+    history = stock.history(period="1y", auto_adjust=False)
+
+    
 
     data = []
 
@@ -69,6 +72,7 @@ def get_stock_history(symbol: str):
             "high": float(row["High"]),
             "low": float(row["Low"]),
             "close": float(row["Close"]),
+            "adj_close": float(row["Adj Close"]),
             "volume": int(row["Volume"])
         })
 
@@ -207,10 +211,21 @@ def get_market_movers():
         if data.empty or len(data) < 2:
             continue
 
-        today = data.iloc[-1]["Close"]
-        yesterday = data.iloc[-2]["Close"]
+        close_prices = data["Close"].dropna()
+
+        if len(close_prices) < 2:
+            continue
+
+        today = close_prices.iloc[-1]
+        yesterday = close_prices.iloc[-2]
+
+        if yesterday == 0:
+            continue
 
         change = ((today - yesterday) / yesterday) * 100
+
+        if not np.isfinite(change):
+            continue
 
         movers.append({
             "symbol": symbol,

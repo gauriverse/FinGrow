@@ -10,13 +10,20 @@ export default function AuthCallback() {
     const finishAuth = async () => {
       const { data, error } = await supabase.auth.getSession();
 
+      // TEMPORARY DEBUG — remove after testing
+      console.log("SUPABASE SESSION:", data.session);
+      console.log("ACCESS TOKEN:", data.session?.access_token);
+
       if (error || !data.session) {
-        setError(error?.message || "Could not verify email. Please try the link again.");
+        setError(
+          error?.message || "Could not verify email. Please try the link again."
+        );
         return;
       }
 
       const completed = await getOnboardingStatus(data.session.user.id);
-      navigate(completed? "/personalized" : "/onboarding");
+
+      navigate(completed ? "/personalized" : "/onboarding");
     };
 
     finishAuth();
@@ -32,7 +39,7 @@ export default function AuthCallback() {
 
   return (
     <div className="h-screen flex items-center justify-center text-sm text-slate-500">
-      Verifying your email...
+      Completing sign in...
     </div>
   );
 }

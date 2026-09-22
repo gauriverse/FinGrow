@@ -299,6 +299,12 @@ export default function Dashboard() {
                       return;
                     }
 
+                    if (item === "AI Picks") {
+                      setSidebarOpen(false);
+                      navigate("/ai-picks");
+                      return;
+                    }
+
                     if (item === "Settings") {
                       setSidebarOpen(false);
                       navigate("/settings");
