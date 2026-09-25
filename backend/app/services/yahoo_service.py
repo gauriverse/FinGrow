@@ -64,6 +64,18 @@ def get_stock_data(symbol: str):
         "marketCap": info.get("marketCap"),
         "currency": info.get("currency"),
         "exchange": info.get("exchange"),
+
+        # Fundamentals
+        "peRatio": info.get("trailingPE"),
+        "eps": info.get("trailingEps"),
+        "dividendYield": info.get("dividendYield"),
+        "week52High": info.get("fiftyTwoWeekHigh"),
+        "week52Low": info.get("fiftyTwoWeekLow"),
+        "bookValue": info.get("bookValue"),
+        "priceToBook": info.get("priceToBook"),
+        "returnOnEquity": info.get("returnOnEquity"),
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
     }
 
 

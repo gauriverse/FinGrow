@@ -25,6 +25,16 @@ interface StockData {
   marketCap: number | null;
   currency: string | null;
   exchange: string | null;
+  peRatio: number | null;
+  eps: number | null;
+  dividendYield: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  bookValue: number | null;
+  priceToBook: number | null;
+  returnOnEquity: number | null;
+  sector: string | null;
+  industry: string | null;
 }
 
 interface HistoryPoint {
@@ -65,15 +75,13 @@ export default function StockDetails() {
         setError("");
 
         // Fetch current stock data
-        const response = await axios.get(
-          `${API}/stock/${symbol}`
-        );
+        const response = await axios.get(`${API}/stock/${symbol}`);
 
         setStock(response.data);
 
         // Fetch historical price data
         const historyResponse = await axios.get<HistoryResponse>(
-          `${API}/history/${symbol}`
+          `${API}/history/${symbol}`,
         );
 
         setHistory(historyResponse.data.data);
@@ -135,10 +143,7 @@ export default function StockDetails() {
     return `₹${value.toLocaleString("en-IN")}`;
   };
 
-  const displayExchange = (
-    exchange: string | null,
-    symbol: string
-  ) => {
+  const displayExchange = (exchange: string | null, symbol: string) => {
     if (symbol.endsWith(".NS")) return "NSE";
     if (symbol.endsWith(".BO")) return "BSE";
 
@@ -166,9 +171,7 @@ export default function StockDetails() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 p-6">
-        <p className="text-slate-500">
-          Loading stock data...
-        </p>
+        <p className="text-slate-500">Loading stock data...</p>
       </div>
     );
   }
@@ -193,8 +196,8 @@ export default function StockDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-
+    <>
+      <div className="min-h-screen bg-slate-50 p-6">
       {/* Back */}
       <button
         onClick={() => navigate("/dashboard")}
@@ -205,10 +208,8 @@ export default function StockDetails() {
 
       {/* Stock Header + Market Statistics */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
-
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold text-slate-900">
@@ -224,9 +225,7 @@ export default function StockDetails() {
               {stock.company || "Company name unavailable"}
             </p>
 
-            <p className="text-xs text-slate-400 mt-1">
-              {stock.symbol}
-            </p>
+            <p className="text-xs text-slate-400 mt-1">{stock.symbol}</p>
           </div>
 
           {/* Price */}
@@ -235,102 +234,77 @@ export default function StockDetails() {
               {formatINR(stock.price)}
             </p>
 
-            {stock.change != null &&
-              stock.changePercent != null && (
-                <p
-                  className={`text-sm font-semibold mt-1 ${
-                    stock.change >= 0
-                      ? "text-emerald-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {stock.change >= 0 ? "▲" : "▼"}{" "}
-                  {stock.change >= 0 ? "+" : "-"}₹
-                  {Math.abs(stock.change).toFixed(2)}{" "}
-                  ({Math.abs(stock.changePercent).toFixed(2)}%)
-                </p>
-              )}
+            {stock.change != null && stock.changePercent != null && (
+              <p
+                className={`text-sm font-semibold mt-1 ${
+                  stock.change >= 0 ? "text-emerald-600" : "text-red-600"
+                }`}
+              >
+                {stock.change >= 0 ? "▲" : "▼"} {stock.change >= 0 ? "+" : "-"}₹
+                {Math.abs(stock.change).toFixed(2)} (
+                {Math.abs(stock.changePercent).toFixed(2)}%)
+              </p>
+            )}
           </div>
         </div>
 
         {/* Market Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-6 mt-6 pt-6 border-t border-slate-100">
-
           <div>
-            <p className="text-xs text-slate-400">
-              Previous Close
-            </p>
+            <p className="text-xs text-slate-400">Previous Close</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatINR(stock.previousClose)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Open
-            </p>
+            <p className="text-xs text-slate-400">Open</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatINR(stock.open)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Day High
-            </p>
+            <p className="text-xs text-slate-400">Day High</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatINR(stock.dayHigh)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Day Low
-            </p>
+            <p className="text-xs text-slate-400">Day Low</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatINR(stock.dayLow)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Volume
-            </p>
+            <p className="text-xs text-slate-400">Volume</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatVolume(stock.volume)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Market Cap
-            </p>
+            <p className="text-xs text-slate-400">Market Cap</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
               {formatMarketCap(stock.marketCap)}
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-slate-400">
-              Exchange
-            </p>
+            <p className="text-xs text-slate-400">Exchange</p>
             <p className="text-sm font-semibold text-slate-800 mt-1">
-              {displayExchange(
-                stock.exchange,
-                stock.symbol
-              )}
+              {displayExchange(stock.exchange, stock.symbol)}
             </p>
           </div>
-
         </div>
       </div>
 
       {/* Price History */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 mt-6">
-
         {/* Chart Header */}
         <div className="flex items-center justify-between mb-6">
-
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
               Price History
@@ -343,7 +317,6 @@ export default function StockDetails() {
 
           {/* Range Buttons */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-
             {["1W", "1M", "6M", "1Y"].map((range) => (
               <button
                 key={range}
@@ -357,20 +330,14 @@ export default function StockDetails() {
                 {range}
               </button>
             ))}
-
           </div>
         </div>
 
         {/* Chart */}
         <div className="h-[350px] w-full">
-
           {chartData.length > 0 ? (
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
@@ -387,13 +354,10 @@ export default function StockDetails() {
                   axisLine={false}
                   minTickGap={30}
                   tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString(
-                      "en-IN",
-                      {
-                        day: "2-digit",
-                        month: "short",
-                      }
-                    )
+                    new Date(value).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                    })
                   }
                 />
 
@@ -413,14 +377,11 @@ export default function StockDetails() {
 
                 <Tooltip
                   labelFormatter={(label) =>
-                    new Date(label).toLocaleDateString(
-                      "en-IN",
-                      {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      }
-                    )
+                    new Date(String(label)).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
                   }
                 />
 
@@ -432,7 +393,6 @@ export default function StockDetails() {
                   dot={false}
                   activeDot={{ r: 5 }}
                 />
-
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -442,10 +402,98 @@ export default function StockDetails() {
               </p>
             </div>
           )}
-
         </div>
       </div>
+      </div>
 
+      <div className="bg-white rounded-xl border border-slate-200 p-6 mt-6">
+  <div className="mb-6">
+    <h2 className="text-lg font-semibold text-slate-900">
+      Fundamentals
+    </h2>
+    <p className="text-sm text-slate-400 mt-1">
+      Key financial metrics
+    </p>
+  </div>
+
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-6">
+    <div>
+      <p className="text-xs text-slate-400">P/E Ratio</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.peRatio != null ? stock.peRatio.toFixed(2) : "N/A"}
+      </p>
     </div>
+
+    <div>
+      <p className="text-xs text-slate-400">EPS</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.eps != null ? formatINR(stock.eps) : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">Dividend Yield</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.dividendYield != null
+          ? `${stock.dividendYield.toFixed(2)}%`
+          : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">P/B Ratio</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.priceToBook != null
+          ? stock.priceToBook.toFixed(2)
+          : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">Book Value</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.bookValue != null ? formatINR(stock.bookValue) : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">52W High</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.week52High != null ? formatINR(stock.week52High) : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">52W Low</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.week52Low != null ? formatINR(stock.week52Low) : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">ROE</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.returnOnEquity != null
+          ? `${(stock.returnOnEquity * 100).toFixed(2)}%`
+          : "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">Sector</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.sector || "N/A"}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-xs text-slate-400">Industry</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">
+        {stock.industry || "N/A"}
+      </p>
+    </div>
+  </div>
+</div>
+    </>
   );
 }

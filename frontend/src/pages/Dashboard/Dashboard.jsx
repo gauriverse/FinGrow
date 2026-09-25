@@ -589,7 +589,7 @@ export default function Dashboard() {
                 {/* Stock Information */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-slate-900">
+                    <h2 className="text-2xl font-bold text-slate-900 cursor-pointer hover:text-slate-700 transition">
                       {selectedStock.symbol.replace(".NS", "")}
                     </h2>
 
