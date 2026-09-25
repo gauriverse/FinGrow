@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const profileRef = useRef(null);
   const skipNextSearch = useRef(false);
 
@@ -29,6 +30,77 @@ export default function Dashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
+
+  // =====================================================
+  // STOCK FORMATTING HELPERS
+  // =====================================================
+
+  const formatINR = (value) => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "N/A";
+    }
+
+    return `₹${Number(value).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const formatVolume = (value) => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "N/A";
+    }
+
+    const volume = Number(value);
+
+    if (volume >= 1e7) {
+      return `${(volume / 1e7).toFixed(2)} Cr`;
+    }
+
+    if (volume >= 1e5) {
+      return `${(volume / 1e5).toFixed(2)} L`;
+    }
+
+    if (volume >= 1e3) {
+      return `${(volume / 1e3).toFixed(2)} K`;
+    }
+
+    return volume.toLocaleString("en-IN");
+  };
+
+  const formatMarketCap = (value) => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "N/A";
+    }
+
+    const cap = Number(value);
+
+    if (cap >= 1e12) {
+      return `₹${(cap / 1e12).toFixed(2)} L Cr`;
+    }
+
+    if (cap >= 1e7) {
+      return `₹${(cap / 1e7).toFixed(2)} Cr`;
+    }
+
+    if (cap >= 1e5) {
+      return `₹${(cap / 1e5).toFixed(2)} L`;
+    }
+
+    return `₹${cap.toLocaleString("en-IN")}`;
+  };
+
+  const displayExchange = (exchange, symbol) => {
+    if (symbol?.endsWith(".NS")) {
+      return "NSE";
+    }
+
+    if (symbol?.endsWith(".BO")) {
+      return "BSE";
+    }
+
+    return exchange || "N/A";
+  };
 
   // =====================================================
   // STOCK SEARCH
@@ -368,37 +440,36 @@ export default function Dashboard() {
                 className="w-80 px-4 py-2 rounded-lg border border-slate-200 bg-[#FAFBFD] text-sm focus:outline-none"
               />
 
-              {searchQuery &&
-                (searchResults.length > 0 || searchLoading) && (
-                  <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                    {searchLoading && (
-                      <p className="px-4 py-3 text-sm text-slate-400">
-                        Searching...
-                      </p>
-                    )}
+              {searchQuery && (searchResults.length > 0 || searchLoading) && (
+                <div className="absolute top-11 left-0 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                  {searchLoading && (
+                    <p className="px-4 py-3 text-sm text-slate-400">
+                      Searching...
+                    </p>
+                  )}
 
-                    {!searchLoading && searchResults.length === 0 && (
-                      <p className="px-4 py-3 text-sm text-slate-400">
-                        No stocks found
-                      </p>
-                    )}
+                  {!searchLoading && searchResults.length === 0 && (
+                    <p className="px-4 py-3 text-sm text-slate-400">
+                      No stocks found
+                    </p>
+                  )}
 
-                    {!searchLoading &&
-                      searchResults.map((stock) => (
-                        <button
-                          key={stock.symbol}
-                          onClick={() => handleStockSelect(stock)}
-                          className="w-full text-left px-4 py-3 hover:bg-slate-50 cursor-pointer transition"
-                        >
-                          <p className="font-semibold text-sm text-slate-900">
-                            {stock.symbol.replace(".NS", "")}
-                          </p>
+                  {!searchLoading &&
+                    searchResults.map((stock) => (
+                      <button
+                        key={stock.symbol}
+                        onClick={() => handleStockSelect(stock)}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 cursor-pointer transition"
+                      >
+                        <p className="font-semibold text-sm text-slate-900">
+                          {stock.symbol.replace(".NS", "")}
+                        </p>
 
-                          <p className="text-xs text-slate-400">{stock.name}</p>
-                        </button>
-                      ))}
-                  </div>
-                )}
+                        <p className="text-xs text-slate-400">{stock.name}</p>
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -505,88 +576,130 @@ export default function Dashboard() {
           </div>
 
           {/* =====================================================
-              SELECTED STOCK
-          ===================================================== */}
+    SELECTED STOCK
+    ===================================================== */}
 
           {selectedStock && (
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mt-1">
-                    {selectedStock.symbol.replace(".NS", "")}
-                  </h2>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-6">
+                {/* Stock Information */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      {selectedStock.symbol.replace(".NS", "")}
+                    </h2>
+
+                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                      {displayExchange(
+                        selectedStock.exchange,
+                        selectedStock.symbol,
+                      )}
+                    </span>
+                  </div>
 
                   <p className="text-sm text-slate-400 mt-1">
-                    {selectedStock.company}
+                    {selectedStock.company || "Company name unavailable"}
+                  </p>
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    {selectedStock.symbol}
                   </p>
                 </div>
 
-                <div className="text-right">
+                {/* Current Price */}
+                <div className="text-right shrink-0">
                   <p className="text-2xl font-bold text-slate-900">
-                    {selectedStock.price != null
-                      ? `₹${Number(selectedStock.price).toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                          },
-                        )}`
-                      : "N/A"}
+                    {formatINR(selectedStock.price)}
                   </p>
 
-                  {selectedStock.previousClose != null &&
-                    selectedStock.price != null && (
+                  {selectedStock.change != null &&
+                    selectedStock.changePercent != null && (
                       <p
                         className={`text-sm font-semibold mt-1 ${
-                          selectedStock.price >= selectedStock.previousClose
+                          Number(selectedStock.change) >= 0
                             ? "text-emerald-600"
                             : "text-red-600"
                         }`}
                       >
-                        {selectedStock.price >= selectedStock.previousClose
-                          ? "▲"
-                          : "▼"}{" "}
-                        {Math.abs(
-                          ((selectedStock.price -
-                            selectedStock.previousClose) /
-                            selectedStock.previousClose) *
-                            100,
-                        ).toFixed(2)}
-                        % today
+                        {Number(selectedStock.change) >= 0 ? "▲" : "▼"}{" "}
+                        {Number(selectedStock.change) >= 0 ? "+" : "-"}₹
+                        {Math.abs(Number(selectedStock.change)).toFixed(2)} (
+                        {Math.abs(Number(selectedStock.changePercent)).toFixed(
+                          2,
+                        )}
+                        %)
+                        {" today"}
                       </p>
                     )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-slate-100">
+              {/* Market Statistics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-5 mt-5 pt-5 border-t border-slate-100">
+                {/* Previous Close */}
                 <div>
                   <p className="text-xs text-slate-400">Previous Close</p>
+
                   <p className="text-sm font-semibold text-slate-800 mt-1">
-                    {selectedStock.previousClose != null
-                      ? `₹${Number(selectedStock.previousClose).toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                          },
-                        )}`
-                      : "N/A"}
+                    {formatINR(selectedStock.previousClose)}
                   </p>
                 </div>
 
+                {/* Open */}
                 <div>
                   <p className="text-xs text-slate-400">Open</p>
+
                   <p className="text-sm font-semibold text-slate-800 mt-1">
-                    {selectedStock.open != null
-                      ? `₹${Number(selectedStock.open).toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                        })}`
-                      : "N/A"}
+                    {formatINR(selectedStock.open)}
                   </p>
                 </div>
 
+                {/* Day High */}
+                <div>
+                  <p className="text-xs text-slate-400">Day High</p>
+
+                  <p className="text-sm font-semibold text-slate-800 mt-1">
+                    {formatINR(selectedStock.dayHigh)}
+                  </p>
+                </div>
+
+                {/* Day Low */}
+                <div>
+                  <p className="text-xs text-slate-400">Day Low</p>
+
+                  <p className="text-sm font-semibold text-slate-800 mt-1">
+                    {formatINR(selectedStock.dayLow)}
+                  </p>
+                </div>
+
+                {/* Volume */}
+                <div>
+                  <p className="text-xs text-slate-400">Volume</p>
+
+                  <p className="text-sm font-semibold text-slate-800 mt-1">
+                    {formatVolume(selectedStock.volume)}
+                  </p>
+                </div>
+
+                {/* Market Cap */}
+                <div>
+                  <p className="text-xs text-slate-400">Market Cap</p>
+
+                  <p className="text-sm font-semibold text-slate-800 mt-1">
+                    {formatMarketCap(selectedStock.marketCap)}
+                  </p>
+                </div>
+
+                {/* Exchange */}
                 <div>
                   <p className="text-xs text-slate-400">Exchange</p>
+
                   <p className="text-sm font-semibold text-slate-800 mt-1">
-                    NSE
+                    {displayExchange(
+                      selectedStock.exchange,
+                      selectedStock.symbol,
+                    )}
                   </p>
                 </div>
               </div>
@@ -686,7 +799,7 @@ export default function Dashboard() {
               >
                 {nifty
                   ? `${nifty.changePercent >= 0 ? "▲ +" : "▼ -"}${Math.abs(
-                      nifty.changePercent
+                      nifty.changePercent,
                     ).toFixed(2)}% today`
                   : "Loading..."}
               </p>
