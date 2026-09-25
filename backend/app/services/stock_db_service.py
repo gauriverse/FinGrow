@@ -4,7 +4,7 @@ from app.supabase import admin_supabase
 def upsert_stock(stock_data: dict):
     stock_row = {
         "symbol": stock_data["symbol"],
-        "company_name": stock_data.get("company"),
+        "company_name": stock_data.get("company") or stock_data["symbol"],
         "exchange": stock_data.get("exchange"),
         "current_price": stock_data.get("price"),
         "market_cap": stock_data.get("marketCap"),
