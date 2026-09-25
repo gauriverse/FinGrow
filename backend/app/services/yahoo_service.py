@@ -35,6 +35,13 @@ def get_stock_data(symbol: str):
     if previous_close is None and len(history) >= 2:
         previous_close = history.iloc[-2]["Close"]
 
+    change = None
+    change_percent = None
+
+    if price is not None and previous_close is not None and previous_close != 0:
+        change = price - previous_close
+        change_percent = (change / previous_close) * 100
+
     open_price = info.get("open")
     if open_price is None and not history.empty:
         open_price = history.iloc[-1]["Open"]
@@ -45,6 +52,10 @@ def get_stock_data(symbol: str):
         "price": round(float(price), 2) if price is not None else None,
         "previousClose": round(float(previous_close), 2)
             if previous_close is not None else None,
+        "change": round(float(change), 2)
+            if change is not None else None,
+        "changePercent": round(float(change_percent), 2)
+            if change_percent is not None else None,
         "open": round(float(open_price), 2)
             if open_price is not None else None,
         "dayHigh": info.get("dayHigh"),
@@ -249,32 +260,6 @@ def get_market_movers():
     "losers": losers[:3]
 }
 
-
-def search_stock_symbols(query: str):
-    search = yf.Search(query)
-
-    results = search.quotes
-
-    stocks = []
-
-    for item in results[:8]:
-        symbol = item.get("symbol")
-
-        if not symbol:
-            continue
-
-        # Keep Indian NSE stocks for FinGrow
-        if not symbol.endswith(".NS"):
-            continue
-
-        stocks.append({
-            "symbol": symbol,
-            "name": item.get("longname")
-                    or item.get("shortname")
-                    or symbol,
-        })
-
-    return stocks
 
 def search_stock_symbols(query: str):
     query = query.strip()
