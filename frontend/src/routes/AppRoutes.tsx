@@ -10,6 +10,8 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import PersonalizedLanding from "../pages/PersonalizedLanding/PersonalizedLanding";
 import Settings from "../pages/Settings/Settings";
 import AIPicks from "../pages/AIPicks/AIPicks";
+// @ts-expect-error: StockDetails is a JS file without declaration file
+import StockDetails from "../pages/StockDetails/StockDetails";
 
 export default function AppRoutes() {
   return (
@@ -33,6 +35,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stock/:symbol"
+          element={
+            <ProtectedRoute>
+              <StockDetails />
             </ProtectedRoute>
           }
         />

@@ -580,7 +580,10 @@ export default function Dashboard() {
     ===================================================== */}
 
           {selectedStock && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div
+              onClick={() => navigate(`/stock/${selectedStock.symbol}`)}
+              className="bg-white rounded-xl border border-slate-200 p-5"
+            >
               {/* Header */}
               <div className="flex items-start justify-between gap-6">
                 {/* Stock Information */}
