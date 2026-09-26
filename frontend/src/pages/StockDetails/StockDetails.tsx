@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { supabase } from "../../lib/supabase";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+  getStockId,
+} from "../../services/watchlist";
 import {
   ResponsiveContainer,
   LineChart,
@@ -53,6 +60,7 @@ interface HistoryResponse {
   data: HistoryPoint[];
 }
 
+
 const API = "http://127.0.0.1:8000/market";
 
 export default function StockDetails() {
@@ -66,6 +74,9 @@ export default function StockDetails() {
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [selectedRange, setSelectedRange] = useState("1Y");
 
+  const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [stockId, setStockId] = useState<string | null>(null);
   useEffect(() => {
     const fetchStock = async () => {
       if (!symbol) return;
@@ -79,22 +90,93 @@ export default function StockDetails() {
 
         setStock(response.data);
 
-        // Fetch historical price data
+         // Fetch historical price data
         const historyResponse = await axios.get<HistoryResponse>(
           `${API}/history/${symbol}`,
         );
 
         setHistory(historyResponse.data.data);
       } catch (err) {
-        console.error("Failed to load stock:", err);
-        setError("Unable to load stock data.");
-      } finally {
+  console.error("Failed to load stock:", err);
+
+  if (axios.isAxiosError(err)) {
+    console.error("API error:", err.response?.data);
+    console.error("Status:", err.response?.status);
+  }
+
+  setError("Unable to load stock data.");
+} finally {
         setLoading(false);
       }
     };
 
     fetchStock();
   }, [symbol]);
+
+  useEffect(() => {
+  const checkWatchlist = async () => {
+    if (!symbol) return;
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setIsWatchlisted(false);
+        return;
+      }
+
+      const id = await getStockId(symbol);
+      setStockId(id);
+
+      if (!id) {
+        setIsWatchlisted(false);
+        return;
+      }
+
+      const exists = await isInWatchlist(user.id, id);
+      setIsWatchlisted(exists);
+    } catch (err) {
+      console.error("Failed to check watchlist:", err);
+    }
+  };
+
+  checkWatchlist();
+}, [symbol]);
+
+const handleWatchlistToggle = async () => {
+  try {
+    setWatchlistLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Please log in to manage your watchlist.");
+      return;
+    }
+
+    if (!stockId) {
+      setError("Stock information is unavailable.");
+      return;
+    }
+
+    if (isWatchlisted) {
+      await removeFromWatchlist(user.id, stockId);
+      setIsWatchlisted(false);
+    } else {
+      await addToWatchlist(user.id, stockId);
+      setIsWatchlisted(true);
+    }
+  } catch (err) {
+    console.error("Watchlist update failed:", err);
+    setError("Unable to update watchlist.");
+  } finally {
+    setWatchlistLoading(false);
+  }
+};
 
   const formatINR = (value: number | null) => {
     if (value == null || Number.isNaN(value)) {
@@ -227,7 +309,24 @@ export default function StockDetails() {
 
             <p className="text-xs text-slate-400 mt-1">{stock.symbol}</p>
           </div>
+<button
+  type="button"
+  onClick={handleWatchlistToggle}
+  disabled={watchlistLoading || !stockId}
+  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+>
+  <span className="text-base">
+    {isWatchlisted ? "★" : "☆"}
+  </span>
 
+  {watchlistLoading
+    ? isWatchlisted
+      ? "Removing..."
+      : "Adding..."
+    : isWatchlisted
+      ? "In Watchlist"
+      : "Add to Watchlist"}
+</button>
           {/* Price */}
           <div className="text-right">
             <p className="text-3xl font-bold text-slate-900">
@@ -497,3 +596,4 @@ export default function StockDetails() {
     </>
   );
 }
+
