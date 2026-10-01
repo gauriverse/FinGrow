@@ -1,38 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Clock3, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import {
   getLearningContent,
   getLearningProgress,
 } from "../../services/learnService";
 
-import { useNavigate } from "react-router-dom";
-
-type LearningContent = {
+type Lesson = {
   id: string;
   category: string;
   title: string;
   slug: string;
-  description: string | null;
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  description: string;
+  difficulty: string;
   estimated_minutes: number;
   display_order: number;
 };
 
-type LearningProgress = {
-  id: string;
+type Progress = {
   content_id: string;
   progress_percent: number;
   completed: boolean;
-  completed_at: string | null;
 };
 
 export default function Learn() {
   const navigate = useNavigate();
 
-  const [lessons, setLessons] = useState<LearningContent[]>([]);
-  const [progress, setProgress] = useState<LearningProgress[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [progress, setProgress] = useState<Progress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -60,43 +56,46 @@ export default function Learn() {
     loadLearnData();
   }, []);
 
+  const progressMap = useMemo(() => {
+    const map: Record<string, Progress> = {};
+
+    progress.forEach((item) => {
+      map[item.content_id] = item;
+    });
+
+    return map;
+  }, [progress]);
+
+  const overallProgress = useMemo(() => {
+    if (!lessons.length) return 0;
+
+    const total = lessons.reduce((sum, lesson) => {
+      return sum + (progressMap[lesson.id]?.progress_percent || 0);
+    }, 0);
+
+    return Math.round(total / lessons.length);
+  }, [lessons, progressMap]);
+
+  const completedCount = useMemo(() => {
+    return lessons.filter(
+      (lesson) => progressMap[lesson.id]?.completed
+    ).length;
+  }, [lessons, progressMap]);
+
   const categories = useMemo(() => {
-    return [
-      "All",
-      ...Array.from(
-        new Set(lessons.map((lesson) => lesson.category))
-      ),
-    ];
+    return [...new Set(lessons.map((lesson) => lesson.category))];
   }, [lessons]);
 
-  const filteredLessons = useMemo(() => {
-    if (selectedCategory === "All") {
-      return lessons;
-    }
-
-    return lessons.filter(
-      (lesson) => lesson.category === selectedCategory
-    );
-  }, [lessons, selectedCategory]);
-
-  const completedCount = progress.filter(
-    (item) => item.completed
-  ).length;
-
-  const overallProgress =
-    lessons.length > 0
-      ? Math.round((completedCount / lessons.length) * 100)
-      : 0;
-
-  const getLessonProgress = (lessonId: string) => {
-    return progress.find(
-      (item) => item.content_id === lessonId
-    );
+  const categoryIds: Record<string, string> = {
+    "Stock Market Basics": "stock-market-basics",
+    "Fundamental Analysis": "fundamental-analysis",
+    "Technical Analysis": "technical-analysis",
+    "Risk Management": "risk-management",
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
         <p className="text-gray-500">Loading Learn...</p>
       </div>
     );
@@ -104,139 +103,207 @@ export default function Learn() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-3">{error}</p>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg border"
-          >
-            Try Again
-          </button>
-        </div>
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-6 py-8">
-      {/* HEADER */}
+    <div className="min-h-screen bg-white text-gray-900">
+      <div className="max-w-7xl mx-auto px-6 py-10">
 
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+        {/* ===================================================== */}
+        {/* HEADER */}
+        {/* ===================================================== */}
+
+        <div className="mb-10">
+
+          <div className="flex items-center gap-3 mb-3">
+
+            <div className="w-10 h-10 rounded-xl bg-[#0F4C3A]/10 flex items-center justify-center">
               <BookOpen
+                className="text-[#0F4C3A]"
                 size={22}
-                className="text-emerald-700"
               />
             </div>
 
-            <h1 className="text-3xl font-semibold">
+            <h1 className="text-3xl font-bold text-gray-900">
               Learn
             </h1>
+
           </div>
 
-          <p className="text-gray-500">
-            Build your understanding of investing,
-            markets and financial analysis step by step.
+          <p className="text-gray-500 max-w-2xl">
+            Build your investing knowledge step by step — from
+            stock-market basics to analysis and risk management.
           </p>
+
         </div>
 
+        {/* ===================================================== */}
+        {/* OVERALL PROGRESS */}
+        {/* ===================================================== */}
 
-        {/* PROGRESS CARD */}
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 mb-8">
 
-        <div className="bg-white border rounded-2xl p-6 mb-8 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+
             <div>
-              <p className="text-sm text-gray-500">
-                Your Learning Progress
+              <p className="text-sm text-gray-500 mb-1">
+                Overall Progress
               </p>
 
-              <h2 className="text-2xl font-semibold mt-1">
-                {completedCount} / {lessons.length} lessons
+              <h2 className="text-2xl font-semibold text-gray-900">
+                {overallProgress}%
               </h2>
             </div>
 
-            <div className="text-right">
-              <p className="text-2xl font-semibold text-emerald-700">
-                {overallProgress}%
-              </p>
-
-              <p className="text-xs text-gray-500">
-                completed
-              </p>
+            <div className="text-sm text-gray-500">
+              {completedCount} of {lessons.length} lessons completed
             </div>
+
           </div>
 
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+
             <div
-              className="h-full bg-emerald-600 rounded-full transition-all"
+              className="h-full bg-[#0F4C3A] rounded-full transition-all duration-500"
               style={{
                 width: `${overallProgress}%`,
               }}
             />
+
           </div>
+
         </div>
 
+        {/* ===================================================== */}
+        {/* CATEGORY QUICK NAVIGATION */}
+        {/* ===================================================== */}
 
-        {/* CATEGORY FILTERS */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm py-4 mb-8 border-b border-gray-100">
 
-        <div className="flex gap-2 flex-wrap mb-8">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() =>
-                setSelectedCategory(category)
-              }
-              className={`px-4 py-2 rounded-full text-sm border transition ${
-                selectedCategory === category
-                  ? "bg-emerald-700 text-white border-emerald-700"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
+            {categories.map((category) => {
 
-        {/* LESSONS */}
-
-        {categories
-          .filter(
-            (category) =>
-              selectedCategory === "All" ||
-              category === selectedCategory
-          )
-          .map((category) => {
-            const categoryLessons =
-              filteredLessons.filter(
-                (lesson) =>
-                  lesson.category === category
+              const categoryLessons = lessons.filter(
+                (lesson) => lesson.category === category
               );
 
-            if (categoryLessons.length === 0) {
-              return null;
-            }
+              const categoryCompleted =
+                categoryLessons.filter(
+                  (lesson) =>
+                    progressMap[lesson.id]?.completed
+                ).length;
+
+              return (
+                <button
+                  key={category}
+                  onClick={() => {
+                    document
+                      .getElementById(categoryIds[category])
+                      ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                  }}
+                  className="text-left rounded-xl border border-gray-200 bg-white hover:border-[#0F4C3A]/30 hover:shadow-sm transition p-4"
+                >
+
+                  <div className="flex items-center justify-between gap-2">
+
+                    <p className="text-sm font-semibold text-gray-900">
+                      {category}
+                    </p>
+
+                    {categoryCompleted ===
+                      categoryLessons.length && (
+                      <CheckCircle2
+                        size={17}
+                        className="text-[#0F4C3A]"
+                      />
+                    )}
+
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    {categoryCompleted} /{" "}
+                    {categoryLessons.length} completed
+                  </p>
+
+                </button>
+              );
+            })}
+
+          </div>
+
+        </div>
+
+        {/* ===================================================== */}
+        {/* LESSON CATEGORIES */}
+        {/* ===================================================== */}
+
+        <div className="space-y-14">
+
+          {categories.map((category) => {
+
+            const categoryLessons = lessons
+              .filter(
+                (lesson) => lesson.category === category
+              )
+              .sort(
+                (a, b) =>
+                  a.display_order - b.display_order
+              );
+
+            const categoryCompleted =
+              categoryLessons.filter(
+                (lesson) =>
+                  progressMap[lesson.id]?.completed
+              ).length;
 
             return (
               <section
                 key={category}
-                className="mb-10"
+                id={categoryIds[category]}
+                className="scroll-mt-28"
               >
-                <h2 className="text-xl font-semibold mb-4">
-                  {category}
-                </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {/* Category Header */}
+
+                <div className="flex items-end justify-between mb-5">
+
+                  <div>
+
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      {category}
+                    </h2>
+
+                    <p className="text-sm text-gray-500 mt-1">
+                      {categoryCompleted} of{" "}
+                      {categoryLessons.length} completed
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {/* Lesson Cards */}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
                   {categoryLessons.map((lesson) => {
-                    const lessonProgress =
-                      getLessonProgress(lesson.id);
 
-                    const completed =
+                    const lessonProgress =
+                      progressMap[lesson.id];
+
+                    const isCompleted =
                       lessonProgress?.completed === true;
+
+                    const percent =
+                      lessonProgress?.progress_percent || 0;
 
                     return (
                       <button
@@ -246,71 +313,112 @@ export default function Learn() {
                             `/learn/${lesson.slug}`
                           )
                         }
-                        className="text-left bg-white border rounded-2xl p-5 hover:shadow-md transition group"
+                        className="text-left rounded-2xl border border-gray-200 bg-white hover:border-[#0F4C3A]/30 hover:shadow-md transition p-5 group"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <h3 className="font-semibold text-lg group-hover:text-emerald-700 transition">
-                              {lesson.title}
-                            </h3>
 
-                            <p className="text-sm text-gray-500 mt-2 line-clamp-2">
-                              {lesson.description}
-                            </p>
+                        {/* Card Top */}
+
+                        <div className="flex items-start justify-between gap-4 mb-4">
+
+                          <div className="w-10 h-10 rounded-xl bg-[#0F4C3A]/10 flex items-center justify-center">
+
+                            {isCompleted ? (
+                              <CheckCircle2
+                                size={20}
+                                className="text-[#0F4C3A]"
+                              />
+                            ) : (
+                              <BookOpen
+                                size={20}
+                                className="text-[#0F4C3A]"
+                              />
+                            )}
+
                           </div>
 
-                          {completed && (
-                            <CheckCircle2
-                              size={20}
-                              className="text-emerald-600 shrink-0"
-                            />
+                          {isCompleted && (
+                            <span className="text-xs font-medium text-[#0F4C3A]">
+                              Completed
+                            </span>
                           )}
+
                         </div>
 
-                        <div className="flex items-center gap-4 mt-5 text-xs text-gray-500">
+                        {/* Title */}
+
+                        <h3 className="font-semibold text-lg text-gray-900 mb-2 group-hover:text-[#0F4C3A] transition">
+
+                          {lesson.title}
+
+                        </h3>
+
+                        {/* Description */}
+
+                        <p className="text-sm text-gray-500 leading-6 mb-5">
+
+                          {lesson.description}
+
+                        </p>
+
+                        {/* Metadata */}
+
+                        <div className="flex items-center gap-4 text-xs text-gray-400">
+
                           <span>
                             {lesson.difficulty}
                           </span>
 
                           <span className="flex items-center gap-1">
-                            <Clock3 size={14} />
+
+                            <Clock3 size={13} />
+
                             {lesson.estimated_minutes} min
+
                           </span>
+
                         </div>
 
-                        {lessonProgress &&
-                          !completed && (
-                            <div className="mt-4">
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>
-                                  Progress
-                                </span>
+                        {/* Progress */}
 
-                                <span>
-                                  {
-                                    lessonProgress.progress_percent
-                                  }
-                                  %
-                                </span>
-                              </div>
+                        <div className="mt-5">
 
-                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-emerald-600"
-                                  style={{
-                                    width: `${lessonProgress.progress_percent}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
+                          <div className="flex justify-between text-xs mb-2">
+
+                            <span className="text-gray-400">
+                              Progress
+                            </span>
+
+                            <span className="text-gray-500">
+                              {percent}%
+                            </span>
+
+                          </div>
+
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+
+                            <div
+                              className="h-full bg-[#0F4C3A] rounded-full transition-all"
+                              style={{
+                                width: `${percent}%`,
+                              }}
+                            />
+
+                          </div>
+
+                        </div>
+
                       </button>
                     );
                   })}
+
                 </div>
+
               </section>
             );
           })}
+
+        </div>
+
       </div>
     </div>
   );
