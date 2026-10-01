@@ -1,18 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.supabase import admin_supabase
 from app.auth import get_current_user
+from datetime import datetime, timezone
 
 router = APIRouter()
 
 
-# ============================================================
-# GET ALL PUBLISHED LEARNING CONTENT
-# ============================================================
-
 @router.get("/content")
-def get_learning_content(
-    current_user=Depends(get_current_user)
-):
+def get_learning_content(current_user=Depends(get_current_user)):
     try:
         result = (
             admin_supabase
@@ -22,7 +17,6 @@ def get_learning_content(
                 "difficulty, estimated_minutes, display_order"
             )
             .eq("published", True)
-            .order("category")
             .order("display_order")
             .execute()
         )
@@ -33,16 +27,11 @@ def get_learning_content(
 
     except Exception as e:
         print("LEARN CONTENT ERROR:", repr(e))
-
         raise HTTPException(
             status_code=500,
-            detail="Unable to load learning content"
+            detail=str(e)
         )
 
-
-# ============================================================
-# GET SINGLE LESSON
-# ============================================================
 
 @router.get("/content/{slug}")
 def get_learning_lesson(
@@ -56,33 +45,27 @@ def get_learning_lesson(
             .select("*")
             .eq("slug", slug)
             .eq("published", True)
-            .maybe_single()
             .execute()
         )
 
-        if not result or not result.data:
+        if not result.data:
             raise HTTPException(
                 status_code=404,
                 detail="Learning content not found"
             )
 
-        return result.data
+        return result.data[0]
 
     except HTTPException:
         raise
 
     except Exception as e:
         print("LEARN LESSON ERROR:", repr(e))
-
         raise HTTPException(
             status_code=500,
-            detail="Unable to load lesson"
+            detail=str(e)
         )
 
-
-# ============================================================
-# GET USER LEARNING PROGRESS
-# ============================================================
 
 @router.get("/progress")
 def get_learning_progress(
@@ -108,16 +91,11 @@ def get_learning_progress(
 
     except Exception as e:
         print("LEARN PROGRESS ERROR:", repr(e))
-
         raise HTTPException(
             status_code=500,
-            detail="Unable to load learning progress"
+            detail=str(e)
         )
 
-
-# ============================================================
-# UPDATE USER LEARNING PROGRESS
-# ============================================================
 
 @router.put("/progress/{content_id}")
 def update_learning_progress(
@@ -144,8 +122,6 @@ def update_learning_progress(
         }
 
         if completed:
-            from datetime import datetime, timezone
-
             progress_data["completed_at"] = (
                 datetime.now(timezone.utc).isoformat()
             )
@@ -173,8 +149,7 @@ def update_learning_progress(
 
     except Exception as e:
         print("UPDATE LEARN PROGRESS ERROR:", repr(e))
-
         raise HTTPException(
             status_code=500,
-            detail="Unable to update learning progress"
+            detail=str(e)
         )
