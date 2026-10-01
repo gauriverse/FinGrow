@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.portfolio_routes import router as portfolio_router
-from app.routes import market_routes, auth_routes, recommendation_routes
+from app.routes import market_routes, auth_routes, recommendation_routes, learn_routes
 from app.ml.model_loader import model
 
 app = FastAPI()
@@ -36,6 +36,12 @@ app.include_router(
     auth_routes.router,
     prefix="/auth",
     tags=["Authentication"]
+)
+
+app.include_router(
+    learn_routes.router,
+    prefix="/learn",
+    tags=["Learning"]
 )
 
 
