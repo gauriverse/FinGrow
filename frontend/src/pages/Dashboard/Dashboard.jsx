@@ -382,23 +382,25 @@ export default function Dashboard() {
                       navigate("/settings");
                       return;
                     }
-
-                    if (item === "Learn"){
+                    if (item === "Watchlist") {
+                      setSidebarOpen(false);
+                      navigate("/watchlist");
+                      return;
+                    }
+                    if (item === "Learn") {
                       setSidebarOpen(false);
                       navigate("/learn");
                       return;
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${active
                       ? "bg-white/10 text-white"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      active ? "bg-white" : "bg-slate-500"
-                    }`}
+                    className={`w-1.5 h-1.5 rounded-full ${active ? "bg-white" : "bg-slate-500"
+                      }`}
                   />
 
                   {item}
@@ -493,11 +495,11 @@ export default function Dashboard() {
               <p className="text-sm font-bold text-slate-800">
                 {portfolio
                   ? `₹${Number(portfolio.available_balance).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                    },
+                  )}`
                   : "Loading..."}
               </p>
             </div>
@@ -626,11 +628,10 @@ export default function Dashboard() {
                   {selectedStock.change != null &&
                     selectedStock.changePercent != null && (
                       <p
-                        className={`text-sm font-semibold mt-1 ${
-                          Number(selectedStock.change) >= 0
+                        className={`text-sm font-semibold mt-1 ${Number(selectedStock.change) >= 0
                             ? "text-emerald-600"
                             : "text-red-600"
-                        }`}
+                          }`}
                       >
                         {Number(selectedStock.change) >= 0 ? "▲" : "▼"}{" "}
                         {Number(selectedStock.change) >= 0 ? "+" : "-"}₹
@@ -731,24 +732,23 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {portfolio
                   ? `₹${Number(portfolio.total_value).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}`
+                    minimumFractionDigits: 2,
+                  })}`
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  portfolio && portfolio.overall_pnl >= 0
+                className={`text-xs font-semibold mt-1 ${portfolio && portfolio.overall_pnl >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
-                }`}
+                  }`}
               >
                 {portfolio
                   ? `${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
-                      Number(portfolio.overall_pnl),
-                    ).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })} overall`
+                    Number(portfolio.overall_pnl),
+                  ).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })} overall`
                   : "Loading..."}
               </p>
             </div>
@@ -763,24 +763,23 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {portfolio
                   ? `${portfolio.today_pnl >= 0 ? "+" : "-"}₹${Math.abs(
-                      Number(portfolio.today_pnl),
-                    ).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}`
+                    Number(portfolio.today_pnl),
+                  ).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}`
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  portfolio && portfolio.today_pnl >= 0
+                className={`text-xs font-semibold mt-1 ${portfolio && portfolio.today_pnl >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
-                }`}
+                  }`}
               >
                 {portfolio
                   ? `${portfolio.today_pnl >= 0 ? "▲ +" : "▼ "}${Math.abs(
-                      Number(portfolio.today_pnl_percent),
-                    ).toFixed(2)}% today`
+                    Number(portfolio.today_pnl_percent),
+                  ).toFixed(2)}% today`
                   : "Loading..."}
               </p>
             </div>
@@ -795,22 +794,21 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {nifty?.price
                   ? `₹${Number(nifty.price).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}`
+                    minimumFractionDigits: 2,
+                  })}`
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  nifty && nifty.changePercent >= 0
+                className={`text-xs font-semibold mt-1 ${nifty && nifty.changePercent >= 0
                     ? "text-emerald-600"
                     : "text-red-600"
-                }`}
+                  }`}
               >
                 {nifty
                   ? `${nifty.changePercent >= 0 ? "▲ +" : "▼ -"}${Math.abs(
-                      nifty.changePercent,
-                    ).toFixed(2)}% today`
+                    nifty.changePercent,
+                  ).toFixed(2)}% today`
                   : "Loading..."}
               </p>
 

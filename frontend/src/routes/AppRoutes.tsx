@@ -16,6 +16,7 @@ import AIPicks from "../pages/AIPicks/AIPicks";
 import StockDetails from "../pages/StockDetails/StockDetails";
 import Learn from "../pages/Learn/Learn";
 import Lesson from "../pages/Learn/Lesson";
+import Watchlist from "../pages/Watchlist/watchlist";
 
 export default function AppRoutes() {
   return (
@@ -45,6 +46,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute>
+              <Watchlist />
             </ProtectedRoute>
           }
         />
