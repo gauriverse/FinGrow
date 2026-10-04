@@ -66,3 +66,32 @@ export const getStockId = async (symbol: string) => {
 
   return data?.id ?? null;
 };
+
+
+
+
+export const getUserWatchlist = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("watchlist")
+    .select(`
+      id,
+      user_id,
+      stock_id,
+      created_at,
+      stocks!watchlist_stock_id_fkey (
+        id,
+        symbol
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Supabase watchlist error:", error);
+    throw error;
+  }
+
+  console.log("Supabase watchlist result:", data);
+
+  return data || [];
+};

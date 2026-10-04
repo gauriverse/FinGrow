@@ -538,8 +538,8 @@ export default function Dashboard() {
   const tradePrice =
     tradeStock
       ? Number(
-          tradeStock.price,
-        )
+        tradeStock.price,
+      )
       : 0;
 
   const enteredAmount =
@@ -553,9 +553,9 @@ export default function Dashboard() {
         ) &&
         enteredAmount > 0
         ? Math.floor(
-            enteredAmount /
-              tradePrice,
-          )
+          enteredAmount /
+          tradePrice,
+        )
         : 0
       : tradeQuantity;
 
@@ -566,13 +566,13 @@ export default function Dashboard() {
   const remainingAmount =
     tradeMode ===
       "amount" &&
-    enteredAmount > 0 &&
-    calculatedQuantity > 0
+      enteredAmount > 0 &&
+      calculatedQuantity > 0
       ? Math.max(
-          0,
-          enteredAmount -
-            estimatedTradeValue,
-        )
+        0,
+        enteredAmount -
+        estimatedTradeValue,
+      )
       : 0;
 
   // =====================================================
@@ -628,7 +628,7 @@ export default function Dashboard() {
         quantity =
           Math.floor(
             amount /
-              tradePrice,
+            tradePrice,
           );
 
         if (
@@ -740,16 +740,15 @@ export default function Dashboard() {
 
   const initials =
     nameParts.length > 1
-      ? `${nameParts[0][0]}${
-          nameParts[
-            nameParts.length -
-              1
-          ][0]
-        }`
+      ? `${nameParts[0][0]}${nameParts[
+      nameParts.length -
+      1
+      ][0]
+      }`
       : nameParts[0]?.slice(
-          0,
-          2,
-        );
+        0,
+        2,
+      );
 
   // =====================================================
   // LOGOUT
@@ -810,11 +809,10 @@ export default function Dashboard() {
       <aside
         className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
         transform transition-transform duration-300 ease-in-out
-        ${
-          sidebarOpen
+        ${sidebarOpen
             ? "translate-x-0"
             : "-translate-x-full"
-        }`}
+          }`}
       >
         {/* Logo */}
 
@@ -897,31 +895,28 @@ export default function Dashboard() {
                       return;
                     }
 
-                    if (
-                      item ===
-                      "Learn"
-                    ) {
-                      setSidebarOpen(
-                        false,
-                      );
-                      navigate(
-                        "/learn",
-                      );
+                    if (item === "Watchlist") {
+                      setSidebarOpen(false);
+                      navigate("/watchlist");
+                      return;
+                    }
+                    if (item === "Learn") {
+                      setSidebarOpen(false);
+                      navigate("/learn");
+
                       return;
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${active
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      active
-                        ? "bg-white"
-                        : "bg-slate-500"
-                    }`}
+                    className={`w-1.5 h-1.5 rounded-full ${active ? "bg-white" : "bg-slate-500"
+                      }`}
+
+
                   />
 
                   {item}
@@ -993,7 +988,7 @@ export default function Dashboard() {
 
                     {!searchLoading &&
                       searchResults.length ===
-                        0 && (
+                      0 && (
                         <p className="px-4 py-3 text-sm text-slate-400">
                           No stocks found
                         </p>
@@ -1045,14 +1040,14 @@ export default function Dashboard() {
 
               <p className="text-sm font-bold text-slate-800">
                 {portfolio
-                  ? `₹${Number(
-                      portfolio.available_balance,
-                    ).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
+
+                  ? `₹${Number(portfolio.available_balance).toLocaleString(
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                    },
+                  )}`
+
                   : "Loading..."}
               </p>
             </div>
@@ -1104,7 +1099,7 @@ export default function Dashboard() {
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-900 truncate">
                           {firstName ===
-                          "there"
+                            "there"
                             ? "User"
                             : firstName}
                         </p>
@@ -1233,27 +1228,25 @@ export default function Dashboard() {
                   {selectedStock.change !=
                     null &&
                     selectedStock.changePercent !=
-                      null && (
+                    null && (
                       <p
-                        className={`text-sm font-semibold mt-1 ${
-                          Number(
-                            selectedStock.change,
-                          ) >=
-                          0
-                            ? "text-emerald-600"
-                            : "text-red-600"
-                        }`}
+
+                        className={`text-sm font-semibold mt-1 ${Number(selectedStock.change) >= 0
+
+                          ? "text-emerald-600"
+                          : "text-red-600"
+                          }`}
                       >
                         {Number(
                           selectedStock.change,
                         ) >=
-                        0
+                          0
                           ? "▲"
                           : "▼"}{" "}
                         {Number(
                           selectedStock.change,
                         ) >=
-                        0
+                          0
                           ? "+"
                           : "-"}
                         ₹
@@ -1415,42 +1408,33 @@ export default function Dashboard() {
 
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {portfolio
-                  ? `₹${Number(
-                      portfolio.total_value,
-                    ).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
+
+                  ? `₹${Number(portfolio.total_value).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  },
+                  )}`
+
+
+
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  portfolio &&
-                  portfolio.overall_pnl >=
-                    0
-                    ? "text-emerald-600"
-                    : "text-red-600"
-                }`}
+
+                className={`text-xs font-semibold mt-1 ${portfolio && portfolio.overall_pnl >= 0
+
+                  ? "text-emerald-600"
+                  : "text-red-600"
+                  }`}
               >
                 {portfolio
-                  ? `${
-                      portfolio.overall_pnl >=
-                      0
-                        ? "▲ +"
-                        : "▼ -"
-                    }₹${Math.abs(
-                      Number(
-                        portfolio.overall_pnl,
-                      ),
-                    ).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )} overall`
+
+                  ? `${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
+                    Number(portfolio.overall_pnl),
+                  ).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })} overall`
+
                   : "Loading..."}
               </p>
             </div>
@@ -1464,46 +1448,30 @@ export default function Dashboard() {
 
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {portfolio
-                  ? `${
-                      portfolio.today_pnl >=
-                      0
-                        ? "+"
-                        : "-"
-                    }₹${Math.abs(
-                      Number(
-                        portfolio.today_pnl,
-                      ),
-                    ).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
+
+                  ? `${portfolio.today_pnl >= 0 ? "+" : "-"}₹${Math.abs(
+                    Number(portfolio.today_pnl),
+                  ).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}`
+
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  portfolio &&
-                  portfolio.today_pnl >=
-                    0
-                    ? "text-emerald-600"
-                    : "text-red-600"
-                }`}
+
+                className={`text-xs font-semibold mt-1 ${portfolio && portfolio.today_pnl >= 0
+
+                  ? "text-emerald-600"
+                  : "text-red-600"
+                  }`}
               >
                 {portfolio
-                  ? `${
-                      portfolio.today_pnl >=
-                      0
-                        ? "▲ +"
-                        : "▼ "
-                    }${Math.abs(
-                      Number(
-                        portfolio.today_pnl_percent,
-                      ),
-                    ).toFixed(
-                      2,
-                    )}% today`
+
+                  ? `${portfolio.today_pnl >= 0 ? "▲ +" : "▼ "}${Math.abs(
+                    Number(portfolio.today_pnl_percent),
+                  ).toFixed(2)}% today`
+
                   : "Loading..."}
               </p>
             </div>
@@ -1517,39 +1485,28 @@ export default function Dashboard() {
 
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {nifty?.price
-                  ? `₹${Number(
-                      nifty.price,
-                    ).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
+
+                  ? `₹${Number(nifty.price).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  },)}`
+
                   : "Loading..."}
               </p>
 
               <p
-                className={`text-xs font-semibold mt-1 ${
-                  nifty &&
-                  nifty.changePercent >=
-                    0
-                    ? "text-emerald-600"
-                    : "text-red-600"
-                }`}
+
+                className={`text-xs font-semibold mt-1 ${nifty && nifty.changePercent >= 0
+
+                  ? "text-emerald-600"
+                  : "text-red-600"
+                  }`}
               >
                 {nifty
-                  ? `${
-                      nifty.changePercent >=
-                      0
-                        ? "▲ +"
-                        : "▼ -"
-                    }${Math.abs(
-                      Number(
-                        nifty.changePercent,
-                      ),
-                    ).toFixed(
-                      2,
-                    )}% today`
+
+                  ? `${nifty.changePercent >= 0 ? "▲ +" : "▼ -"}${Math.abs(
+                    nifty.changePercent,
+                  ).toFixed(2)}% today`
+
                   : "Loading..."}
               </p>
 
@@ -1784,9 +1741,9 @@ export default function Dashboard() {
                   onClick={() => {
                     if (
                       tradeMode ===
-                        "quantity" &&
+                      "quantity" &&
                       tradePrice >
-                        0
+                      0
                     ) {
                       const quantity =
                         Math.max(
@@ -1795,7 +1752,7 @@ export default function Dashboard() {
                             Number(
                               tradeQuantity,
                             ) ||
-                              1,
+                            1,
                           ),
                         );
 
@@ -1820,12 +1777,11 @@ export default function Dashboard() {
                   disabled={
                     tradeLoading
                   }
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    tradeMode ===
-                    "amount"
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tradeMode ===
+                      "amount"
                       ? "bg-white text-[#0F4C3A] shadow-sm"
                       : "text-gray-500 hover:text-gray-700"
-                  }`}
+                    }`}
                 >
                   Invest by ₹
                 </button>
@@ -1837,21 +1793,21 @@ export default function Dashboard() {
                   onClick={() => {
                     if (
                       tradeMode ===
-                        "amount" &&
+                      "amount" &&
                       tradePrice >
-                        0 &&
+                      0 &&
                       Number.isFinite(
                         enteredAmount,
                       ) &&
                       enteredAmount >
-                        0
+                      0
                     ) {
                       setTradeQuantity(
                         Math.max(
                           1,
                           Math.floor(
                             enteredAmount /
-                              tradePrice,
+                            tradePrice,
                           ),
                         ),
                       );
@@ -1872,12 +1828,11 @@ export default function Dashboard() {
                   disabled={
                     tradeLoading
                   }
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    tradeMode ===
-                    "quantity"
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tradeMode ===
+                      "quantity"
                       ? "bg-white text-[#0F4C3A] shadow-sm"
                       : "text-gray-500 hover:text-gray-700"
-                  }`}
+                    }`}
                 >
                   Buy by shares
                 </button>
@@ -1892,13 +1847,13 @@ export default function Dashboard() {
                 className="text-sm font-semibold text-[#0B3528]"
               >
                 {tradeMode ===
-                "amount"
+                  "amount"
                   ? "How much do you want to invest?"
                   : "How many shares do you want to buy?"}
               </label>
 
               {tradeMode ===
-              "amount" ? (
+                "amount" ? (
                 <div className="mt-2 flex items-center rounded-xl border border-gray-200 px-4 focus-within:border-[#0F4C3A]">
                   <span className="text-sm font-semibold text-gray-500">
                     ₹
@@ -1945,7 +1900,7 @@ export default function Dashboard() {
                           e.target
                             .value,
                         ) ||
-                          1,
+                        1,
                       );
 
                     setTradeQuantity(
@@ -1975,37 +1930,36 @@ export default function Dashboard() {
 
               {tradeMode ===
                 "amount" && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">
-                    Your budget
-                  </span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">
+                      Your budget
+                    </span>
 
-                  <span className="font-semibold text-[#0B3528]">
-                    ₹
-                    {Number.isFinite(
-                      enteredAmount,
-                    )
-                      ? enteredAmount.toLocaleString(
+                    <span className="font-semibold text-[#0B3528]">
+                      ₹
+                      {Number.isFinite(
+                        enteredAmount,
+                      )
+                        ? enteredAmount.toLocaleString(
                           "en-IN",
                           {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           },
                         )
-                      : "0.00"}
-                  </span>
-                </div>
-              )}
+                        : "0.00"}
+                    </span>
+                  </div>
+                )}
 
               {/* Shares */}
 
               <div
-                className={`flex justify-between text-sm ${
-                  tradeMode ===
-                  "amount"
+                className={`flex justify-between text-sm ${tradeMode ===
+                    "amount"
                     ? "mt-3"
                     : ""
-                }`}
+                  }`}
               >
                 <span className="text-gray-500">
                   Shares to buy
@@ -2037,7 +1991,7 @@ export default function Dashboard() {
               {tradeMode ===
                 "amount" &&
                 calculatedQuantity >
-                  0 && (
+                0 && (
                   <div className="mt-3 flex justify-between text-sm">
                     <span className="text-gray-500">
                       Unused amount
@@ -2086,17 +2040,17 @@ export default function Dashboard() {
                 disabled={
                   tradeLoading ||
                   calculatedQuantity <
-                    1
+                  1
                 }
                 className="flex-1 rounded-xl bg-[#0F4C3A] px-4 py-3 text-sm font-semibold text-white hover:bg-[#0B3528] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {tradeLoading
                   ? "Processing..."
                   : calculatedQuantity >=
-                      1
+                    1
                     ? `Confirm Buy — ${formatINR(
-                        estimatedTradeValue,
-                      )}`
+                      estimatedTradeValue,
+                    )}`
                     : "Confirm Buy"}
               </button>
             </div>
