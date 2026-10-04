@@ -10,10 +10,13 @@ import { Onboarding } from "../pages/Onboarding/Onboarding";
 import Dashboard from "../pages/Dashboard/Dashboard";
 
 import ProtectedRoute from "../components/ProtectedRoute";
+
 import PersonalizedLanding from "../pages/PersonalizedLanding/PersonalizedLanding";
 import Settings from "../pages/Settings/Settings";
 import AIPicks from "../pages/AIPicks/AIPicks";
-import StockDetails from "../pages/StockDetails/StockDetails";
+
+import Portfolio from "../pages/Portfolio/Portfolio";
+
 import Learn from "../pages/Learn/Learn";
 import Lesson from "../pages/Learn/Lesson";
 
@@ -21,16 +24,25 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* PUBLIC */}
         <Route path="/" element={<Landing />} />
 
         <Route path="/login" element={<Login />} />
 
         <Route path="/signup" element={<Login />} />
 
-        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/auth/callback"
+          element={<AuthCallback />}
+        />
 
-        <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/auth/reset-password"
+          element={<ResetPassword />}
+        />
 
+        {/* ONBOARDING */}
         <Route
           path="/onboarding"
           element={
@@ -40,6 +52,7 @@ export default function AppRoutes() {
           }
         />
 
+        {/* DASHBOARD */}
         <Route
           path="/dashboard"
           element={
@@ -49,15 +62,7 @@ export default function AppRoutes() {
           }
         />
 
-        <Route
-          path="/stock/:symbol"
-          element={
-            <ProtectedRoute>
-              <StockDetails />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* SETTINGS */}
         <Route
           path="/settings"
           element={
@@ -67,6 +72,7 @@ export default function AppRoutes() {
           }
         />
 
+        {/* PERSONALIZED LANDING */}
         <Route
           path="/personalized"
           element={
@@ -76,6 +82,7 @@ export default function AppRoutes() {
           }
         />
 
+        {/* AI PICKS */}
         <Route
           path="/ai-picks"
           element={
@@ -85,7 +92,17 @@ export default function AppRoutes() {
           }
         />
 
-        {/* Learn */}
+        {/* PORTFOLIO */}
+        <Route
+          path="/portfolio"
+          element={
+            <ProtectedRoute>
+              <Portfolio />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* LEARN */}
         <Route
           path="/learn"
           element={
@@ -95,6 +112,7 @@ export default function AppRoutes() {
           }
         />
 
+        {/* INDIVIDUAL LESSON */}
         <Route
           path="/learn/:slug"
           element={
@@ -103,6 +121,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
       </Routes>
     </BrowserRouter>
   );
