@@ -32,7 +32,7 @@ def get_stock_metadata(symbol: str):
         admin_supabase
         .table("stocks")
         .select(
-            "symbol, company_name, sector, exchange, current_price"
+            "id, symbol, company_name, sector, exchange, current_price"
         )
         .eq("symbol", symbol)
         .maybe_single()
@@ -45,6 +45,7 @@ def get_stock_metadata(symbol: str):
     return result.data
 
 def enrich_candidates():
+    
     candidates = get_ranked_candidates()
 
     enriched = []
@@ -57,6 +58,7 @@ def enrich_candidates():
 
         enriched.append({
             **candidate,
+            "stock_id": stock["id"],
             "company_name": stock["company_name"],
             "sector": stock["sector"],
             "exchange": stock["exchange"],
@@ -115,7 +117,7 @@ def get_horizon_context(investment_horizon: str) -> str:
 
 def personalize_candidates(user_id: str):
     profile = get_user_profile(user_id)
-    candidates = get_ranked_candidates()
+    candidates = enrich_candidates()
 
     risk_level = profile["risk_level"]
     investment_goal = profile["investment_goal"]

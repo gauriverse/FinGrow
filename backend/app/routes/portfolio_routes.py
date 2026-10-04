@@ -1,11 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from pydantic import BaseModel
 from app.supabase import admin_supabase
 from app.auth import get_current_user
 from app.services.yahoo_service import get_stock_data
 
 router = APIRouter()
+class BuyRequest(BaseModel):
+    stock_id: str
+    quantity: int
 
+class SellRequest(BaseModel):
+    stock_id: str
+    quantity: int
 
 def get_or_create_paper_account(user_id: str):
     print("USER ID:", user_id)
@@ -183,4 +190,111 @@ def get_portfolio_summary(
 
         
 
-   
+@router.post("/buy")
+def buy_stock(
+    request: BuyRequest,
+    current_user=Depends(get_current_user)
+):
+    try:
+        user_id = str(current_user.id)
+
+        if request.quantity <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Quantity must be greater than 0"
+            )
+
+        # Make sure the paper account exists before executing the
+        # atomic database transaction.
+        get_or_create_paper_account(user_id)
+
+        result = (
+            admin_supabase
+            .rpc(
+                "execute_buy",
+                {
+                    "p_user_id": user_id,
+                    "p_stock_id": request.stock_id,
+                    "p_quantity": request.quantity
+                }
+            )
+            .execute()
+        )
+
+        if result is None or result.data is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not complete BUY transaction"
+            )
+
+        return result.data
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        import traceback
+
+        print("========== BUY ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        print("===============================")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not complete BUY transaction"
+        )
+
+@router.post("/sell")
+def sell_stock(
+    request: SellRequest,
+    current_user=Depends(get_current_user)
+):
+    try:
+        user_id = str(current_user.id)
+
+        if request.quantity <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Quantity must be greater than 0"
+            )
+
+        # Make sure the paper account exists.
+        get_or_create_paper_account(user_id)
+
+        result = (
+            admin_supabase
+            .rpc(
+                "execute_sell",
+                {
+                    "p_user_id": user_id,
+                    "p_stock_id": request.stock_id,
+                    "p_quantity": request.quantity
+                }
+            )
+            .execute()
+        )
+
+        if result is None or result.data is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Could not complete SELL transaction"
+            )
+
+        return result.data
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        import traceback
+
+        print("========== SELL ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        print("===============================")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not complete SELL transaction"
+        )
