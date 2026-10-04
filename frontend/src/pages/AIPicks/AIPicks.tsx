@@ -243,6 +243,10 @@ export default function AIPicks() {
       navigate("/learn");
       return;
     }
+    if (item === "Portfolio") {
+      navigate("/portfolio");
+      return;
+    }
 
     // Portfolio and Watchlist are not connected yet.
   };

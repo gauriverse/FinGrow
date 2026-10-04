@@ -99,6 +99,7 @@ def get_portfolio_summary(
         )
 
         holdings = portfolio_result.data or []
+        portfolio_holdings = []
 
         invested_value = 0.0
         current_value = 0.0
@@ -126,6 +127,19 @@ def get_portfolio_summary(
             )
 
             symbol = stock_result.data.get("symbol")
+            invested = quantity * buy_price
+            current = quantity * current_price
+
+            portfolio_holdings.append({
+                "stock_id": holding["stock_id"],
+                "symbol": symbol,
+                "quantity": quantity,
+                "buy_price": round(buy_price, 2),
+                "current_price": round(current_price, 2),
+                "invested_value": round(invested, 2),
+                "current_value": round(current, 2),
+                "pnl": round(current - invested, 2),
+            })
 
             invested = quantity * buy_price
             current = quantity * current_price
@@ -170,6 +184,7 @@ def get_portfolio_summary(
             "overall_pnl": round(overall_pnl, 2),
             "today_pnl": round(today_pnl, 2),
             "today_pnl_percent": round(today_pnl_percent, 2),
+            "holdings": portfolio_holdings,
         }
 
     except HTTPException:
