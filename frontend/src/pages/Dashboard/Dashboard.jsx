@@ -26,6 +26,12 @@ import {
   buyStock,
 } from "../../services/portfolioService";
 
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+} from "../../services/watchlist";
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -72,6 +78,14 @@ export default function Dashboard() {
 
   const [selectedStock, setSelectedStock] =
     useState(null);
+
+  // =====================================================
+  // WATCHLIST STATE
+  // =====================================================
+
+  const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistError, setWatchlistError] = useState("");
 
   // =====================================================
   // PAPER TRADE STATE
@@ -419,6 +433,38 @@ export default function Dashboard() {
   }, []);
 
   // =====================================================
+  // CHECK WATCHLIST STATUS FOR SELECTED STOCK
+  // =====================================================
+
+  useEffect(() => {
+    const checkWatchlist = async () => {
+      setWatchlistError("");
+
+      if (!selectedStock?.stock_id) {
+        setIsWatchlisted(false);
+        return;
+      }
+
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          setIsWatchlisted(false);
+          return;
+        }
+
+        const exists = await isInWatchlist(user.id, selectedStock.stock_id);
+        setIsWatchlisted(exists);
+      } catch (error) {
+        console.error("Failed to check watchlist:", error);
+      }
+    };
+
+    checkWatchlist();
+  }, [selectedStock]);
+  // =====================================================
   // SELECT STOCK
   // =====================================================
 
@@ -492,6 +538,46 @@ export default function Dashboard() {
       }
     };
 
+  // =====================================================
+  // WATCHLIST TOGGLE
+  // =====================================================
+
+  const handleWatchlistToggle = async (e) => {
+    // Card par navigate onClick hai, isliye ye zaroori hai
+    e.stopPropagation();
+
+    if (!selectedStock?.stock_id) {
+      setWatchlistError("Stock information is unavailable.");
+      return;
+    }
+
+    try {
+      setWatchlistLoading(true);
+      setWatchlistError("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setWatchlistError("Please log in to manage your watchlist.");
+        return;
+      }
+
+      if (isWatchlisted) {
+        await removeFromWatchlist(user.id, selectedStock.stock_id);
+        setIsWatchlisted(false);
+      } else {
+        await addToWatchlist(user.id, selectedStock.stock_id);
+        setIsWatchlisted(true);
+      }
+    } catch (error) {
+      console.error("Watchlist update failed:", error);
+      setWatchlistError("Unable to update watchlist.");
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
   // =====================================================
   // OPEN PAPER TRADE
   // =====================================================
@@ -1215,7 +1301,36 @@ export default function Dashboard() {
                     {selectedStock.symbol}
                   </p>
                 </div>
+                {/* Watchlist Button (middle) */}
 
+                <div className="flex flex-col items-center self-center">
+                  <button
+                    type="button"
+                    onClick={handleWatchlistToggle}
+                    disabled={watchlistLoading || !selectedStock.stock_id}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="text-base">
+                      {isWatchlisted ? "★" : "☆"}
+                    </span>
+
+                    {watchlistLoading
+                      ? isWatchlisted
+                        ? "Removing..."
+                        : "Adding..."
+                      : isWatchlisted
+                        ? "In Watchlist"
+                        : "Add to Watchlist"}
+                  </button>
+
+                  {watchlistError && (
+                    <p className="text-xs text-red-600 mt-2 text-center">
+                      {watchlistError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Current Price */}
                 {/* Current Price */}
 
                 <div className="text-right shrink-0">
@@ -1778,9 +1893,9 @@ export default function Dashboard() {
                     tradeLoading
                   }
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tradeMode ===
-                      "amount"
-                      ? "bg-white text-[#0F4C3A] shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                    "amount"
+                    ? "bg-white text-[#0F4C3A] shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
                   Invest by ₹
@@ -1829,9 +1944,9 @@ export default function Dashboard() {
                     tradeLoading
                   }
                   className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tradeMode ===
-                      "quantity"
-                      ? "bg-white text-[#0F4C3A] shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                    "quantity"
+                    ? "bg-white text-[#0F4C3A] shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
                   Buy by shares
@@ -1956,9 +2071,9 @@ export default function Dashboard() {
 
               <div
                 className={`flex justify-between text-sm ${tradeMode ===
-                    "amount"
-                    ? "mt-3"
-                    : ""
+                  "amount"
+                  ? "mt-3"
+                  : ""
                   }`}
               >
                 <span className="text-gray-500">

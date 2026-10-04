@@ -20,6 +20,7 @@ import Portfolio from "../pages/Portfolio/Portfolio";
 import Learn from "../pages/Learn/Learn";
 import Lesson from "../pages/Learn/Lesson";
 import Watchlist from "../pages/Watchlist/watchlist";
+import StockDetails from "../pages/StockDetails/StockDetails";
 
 export default function AppRoutes() {
   return (
@@ -67,6 +68,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Watchlist />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stock/:symbol"
+          element={
+            <ProtectedRoute>
+              <StockDetails />
             </ProtectedRoute>
           }
         />
