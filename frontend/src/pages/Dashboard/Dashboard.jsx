@@ -967,6 +967,11 @@ export default function Dashboard() {
                       );
                       return;
                     }
+                    if (item === "Portfolio") {
+                      setSidebarOpen(false);
+                      navigate("/portfolio");
+                      return;
+                    }
 
                     if (
                       item ===
