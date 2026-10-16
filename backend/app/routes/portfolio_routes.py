@@ -14,6 +14,9 @@ class SellRequest(BaseModel):
     stock_id: str
     quantity: int
 
+class AddFundsRequest(BaseModel):
+    amount:float
+
 def get_or_create_paper_account(user_id: str):
     print("USER ID:", user_id)
 
@@ -178,6 +181,7 @@ def get_portfolio_summary(
             "today_pnl": round(today_pnl, 2),
             "today_pnl_percent": round(today_pnl_percent, 2),
             "holdings": portfolio_holdings,
+            "initial_balance": round(float(account["initial_balance"]), 2),
         }
 
     except HTTPException:
@@ -196,7 +200,39 @@ def get_portfolio_summary(
             detail=str(e)
         )
 
-        
+@router.post("/add-funds")
+def add_funds(
+    request: AddFundsRequest,
+    current_user=Depends(get_current_user)
+):
+    amount = round(request.amount, 2)
+
+    if amount < 100 or amount > 1000000:
+        raise HTTPException(
+            status_code=400,
+            detail="Amount must be between ₹100 and ₹10,00,000"
+        )
+
+    try:
+        user_id = str(current_user.id)
+        get_or_create_paper_account(user_id)
+
+        result = (
+            admin_supabase
+            .rpc("add_funds", {"p_user_id": user_id, "p_amount": amount})
+            .execute()
+        )
+
+        if result is None or result.data is None:
+            raise HTTPException(status_code=500, detail="Could not add funds")
+
+        return result.data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("ADD FUNDS ERROR:", repr(e))
+        raise HTTPException(status_code=500, detail="Could not add funds")       
 
 @router.post("/buy")
 def buy_stock(
@@ -306,3 +342,60 @@ def sell_stock(
             status_code=500,
             detail="Could not complete SELL transaction"
         )
+
+@router.get("/wallet/history")
+def wallet_history(current_user=Depends(get_current_user)):
+    try:
+        user_id = str(current_user.id)
+
+        deposits = (
+            admin_supabase.table("wallet_transactions")
+            .select("id, amount, balance_after, created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        ).data or []
+
+        trades = (
+            admin_supabase.table("transactions")
+            .select("id, transaction_type, quantity, price, transaction_date, stocks(symbol)")
+            .eq("user_id", user_id)
+            .order("transaction_date", desc=True)
+            .limit(50)
+            .execute()
+        ).data or []
+
+        items = []
+
+        for d in deposits:
+            items.append({
+                "id": d["id"],
+                "kind": "deposit",
+                "title": "Money added",
+                "detail": "",
+                "amount": round(float(d["amount"]), 2),
+                "balance_after": round(float(d["balance_after"]), 2),
+                "date": d["created_at"],
+            })
+
+        for t in trades:
+            symbol = ((t.get("stocks") or {}).get("symbol") or "").replace(".NS", "")
+            qty = float(t["quantity"])
+            price = float(t["price"])
+            is_buy = t["transaction_type"] == "buy"
+            items.append({
+                "id": t["id"],
+                "kind": "buy" if is_buy else "sell",
+                "title": f"{'Bought' if is_buy else 'Sold'} {symbol}",
+                "detail": f"{qty:g} × ₹{price:,.2f}",
+                "amount": round(qty * price, 2),
+                "date": t["transaction_date"],
+            })
+
+        items.sort(key=lambda x: x["date"], reverse=True)
+        return items[:50]
+
+    except Exception as e:
+        print("WALLET HISTORY ERROR:", repr(e))
+        raise HTTPException(status_code=500, detail="Could not load wallet activity")

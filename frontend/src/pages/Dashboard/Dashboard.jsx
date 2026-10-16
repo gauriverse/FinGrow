@@ -14,7 +14,11 @@ import { FiSettings, FiLogOut } from "react-icons/fi";
 
 import { supabase } from "../../lib/supabase";
 
-import { getPortfolioSummary, buyStock } from "../../services/portfolioService";
+import {
+  getPortfolioSummary,
+  buyStock,
+  addFunds,
+} from "../../services/portfolioService";
 
 import {
   addToWatchlist,
@@ -83,6 +87,12 @@ export default function Dashboard() {
   const [tradeLoading, setTradeLoading] = useState(false);
 
   const [tradeError, setTradeError] = useState("");
+
+  // ADD FUNDS STATE
+  const [addFundsOpen, setAddFundsOpen] = useState(false);
+  const [addAmount, setAddAmount] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState("");
 
   // =====================================================
   // STOCK FORMATTING HELPERS
@@ -533,6 +543,41 @@ export default function Dashboard() {
     }
   };
 
+  const handleCloseAddFunds = () => {
+    if (addLoading) return;
+    setAddFundsOpen(false);
+    setAddAmount("");
+    setAddError("");
+  };
+
+  const handleAddFunds = async () => {
+    const amount = Number(addAmount);
+
+    if (!Number.isFinite(amount) || amount < 100 || amount > 1000000) {
+      setAddError("Enter an amount between ₹100 and ₹10,00,000.");
+      return;
+    }
+
+    try {
+      setAddLoading(true);
+      setAddError("");
+
+      await addFunds(amount);
+
+      const updatedPortfolio = await getPortfolioSummary();
+      setPortfolio(updatedPortfolio);
+
+      setAddFundsOpen(false);
+      setAddAmount("");
+    } catch (error) {
+      setAddError(
+        error instanceof Error ? error.message : "Could not add funds.",
+      );
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   // =====================================================
   // USER INFO
   // =====================================================
@@ -575,6 +620,7 @@ export default function Dashboard() {
     "Dashboard",
     "AI Picks",
     "Portfolio",
+    "Wallet",
     "Watchlist",
     "Learn",
     "Settings",
@@ -649,6 +695,12 @@ export default function Dashboard() {
                   if (item === "Portfolio") {
                     setSidebarOpen(false);
                     navigate("/portfolio");
+                    return;
+                  }
+
+                  if (item === "Wallet") {
+                    setSidebarOpen(false);
+                    navigate("/wallet");
                     return;
                   }
 
@@ -767,22 +819,38 @@ export default function Dashboard() {
           <div className="flex items-center gap-6">
             {/* Wallet */}
 
-            <div className="text-right">
-              <p className="text-[10px] font-semibold text-slate-400 tracking-wide">
-                WALLET
-              </p>
+            <button
+              type="button"
+              onClick={() => navigate("/wallet")}
+              aria-label="Open wallet"
+              className="flex items-center gap-2.5 rounded-full bg-[#F1F8F4] py-1.5 pl-1.5 pr-4 text-sm font-semibold text-[#0F4C3A] transition hover:bg-[#E4F1EA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F4C3A] text-white">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="6" width="18" height="14" rx="3" />
+                  <path d="M7 6V5a2 2 0 0 1 2-2h8" />
+                  <path d="M17 13h.01" />
+                </svg>
+              </span>
 
-              <p className="text-sm font-bold text-slate-800">
-                {portfolio
-                  ? `₹${Number(portfolio.available_balance).toLocaleString(
-                      "en-IN",
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}`
-                  : "Loading..."}
-              </p>
-            </div>
+              {portfolio ? (
+                `₹${Number(portfolio.available_balance).toLocaleString(
+                  "en-IN",
+                  { minimumFractionDigits: 2 },
+                )}`
+              ) : (
+                <span className="h-4 w-20 animate-pulse rounded bg-emerald-100" />
+              )}
+            </button>
 
             {/* Notification */}
 

@@ -106,3 +106,64 @@ export async function sellStock(stock_id: string, quantity: number) {
 
   return response.json();
 }
+
+export async function addFunds(amount: number) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!session?.access_token) {
+    throw new Error("User is not authenticated");
+  }
+
+  const response = await fetch(`${BASE_URL}/portfolio/add-funds`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ amount }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+
+    throw new Error(errorData.detail || "Failed to add funds");
+  }
+
+  return response.json();
+}
+
+export async function getWalletHistory() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!session?.access_token) {
+    throw new Error("User is not authenticated");
+  }
+
+  const response = await fetch(`${BASE_URL}/portfolio/wallet/history`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to load wallet activity");
+  }
+
+  return response.json();
+}

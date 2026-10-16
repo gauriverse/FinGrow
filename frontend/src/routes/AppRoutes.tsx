@@ -21,12 +21,12 @@ import Learn from "../pages/Learn/Learn";
 import Lesson from "../pages/Learn/Lesson";
 import Watchlist from "../pages/Watchlist/watchlist";
 import StockDetails from "../pages/StockDetails/StockDetails";
+import Wallet from "../pages/Wallet/Wallet";
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* PUBLIC */}
         <Route path="/" element={<Landing />} />
 
@@ -34,15 +34,9 @@ export default function AppRoutes() {
 
         <Route path="/signup" element={<Login />} />
 
-        <Route
-          path="/auth/callback"
-          element={<AuthCallback />}
-        />
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
-        <Route
-          path="/auth/reset-password"
-          element={<ResetPassword />}
-        />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
 
         {/* ONBOARDING */}
         <Route
@@ -140,6 +134,15 @@ export default function AppRoutes() {
           }
         />
 
+        {/*WALLET */}
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute>
+              <Wallet />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
