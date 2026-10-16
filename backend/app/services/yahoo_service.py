@@ -1,14 +1,7 @@
-from importlib import import_module
+import time
+import threading
 import yfinance as yf
 import numpy as np
-
-
-try:
-    yf = import_module("yfinance")
-except ModuleNotFoundError as exc:
-    raise RuntimeError(
-        "The yfinance package is required to retrieve Yahoo Finance data."
-    ) from exc
 
 
 def get_stock_data(symbol: str):
@@ -165,112 +158,88 @@ def get_sensex():
         "volume": int(latest["Volume"])
     }
 
-def get_market_movers():
-
-    symbols = [
-    "RELIANCE.NS",
-    "TCS.NS",
-    "HDFCBANK.NS",
-    "ICICIBANK.NS",
-    "INFY.NS",
-    "HINDUNILVR.NS",
-    "ITC.NS",
-    "SBIN.NS",
-    "BHARTIARTL.NS",
-    "KOTAKBANK.NS",
-    "LT.NS",
-    "AXISBANK.NS",
-    "BAJFINANCE.NS",
-    "MARUTI.NS",
-    "SUNPHARMA.NS",
-    "TITAN.NS",
-    "ASIANPAINT.NS",
-    "HCLTECH.NS",
-    "WIPRO.NS",
-    "ULTRACEMCO.NS",
-    "M&M.NS",
-    "NTPC.NS",
-    "POWERGRID.NS",
-    "TATASTEEL.NS",
-    "ADANIENT.NS",
-    "ADANIPORTS.NS",
-    "COALINDIA.NS",
-    "ONGC.NS",
-    "JSWSTEEL.NS",
-    "TECHM.NS",
-    "TMPV.NS",
-    "TMCV.NS",
-    "INDUSINDBK.NS",
-    "BAJAJFINSV.NS",
-    "NESTLEIND.NS",
-    "GRASIM.NS",
-    "HINDALCO.NS",
-    "DRREDDY.NS",
-    "CIPLA.NS",
-    "EICHERMOT.NS",
-    "HEROMOTOCO.NS",
-    "APOLLOHOSP.NS",
-    "BRITANNIA.NS",
-    "DIVISLAB.NS",
-    "BPCL.NS",
-    "IOC.NS",
-    "TATACONSUM.NS",
-    "BEL.NS",
-    "TRENT.NS",
-    "SHRIRAMFIN.NS",
-    "HDFCLIFE.NS"
+MOVER_SYMBOLS = [
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS",
+    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
+    "LT.NS", "AXISBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS",
+    "TITAN.NS", "ASIANPAINT.NS", "HCLTECH.NS", "WIPRO.NS", "ULTRACEMCO.NS",
+    "M&M.NS", "NTPC.NS", "POWERGRID.NS", "TATASTEEL.NS", "ADANIENT.NS",
+    "ADANIPORTS.NS", "COALINDIA.NS", "ONGC.NS", "JSWSTEEL.NS", "TECHM.NS",
+    "TMPV.NS", "TMCV.NS", "INDUSINDBK.NS", "BAJAJFINSV.NS", "NESTLEIND.NS",
+    "GRASIM.NS", "HINDALCO.NS", "DRREDDY.NS", "CIPLA.NS", "EICHERMOT.NS",
+    "HEROMOTOCO.NS", "APOLLOHOSP.NS", "BRITANNIA.NS", "DIVISLAB.NS", "BPCL.NS",
+    "IOC.NS", "TATACONSUM.NS", "BEL.NS", "TRENT.NS", "SHRIRAMFIN.NS",
+    "HDFCLIFE.NS",
 ]
 
-    movers = []
+_closes_cache = {}
+_closes_lock = threading.Lock()
 
-    for symbol in symbols:
-        stock = yf.Ticker(symbol)
+
+def get_last_two_closes(symbols, ttl=60):
+    """
+    One batched Yahoo request for many symbols.
+    Returns {symbol: (latest_close, previous_close)}.
+    """
+    symbols = tuple(sorted(set(symbols)))
+    if not symbols:
+        return {}
+
+    with _closes_lock:
+        hit = _closes_cache.get(symbols)
+        if hit and time.time() - hit[0] < ttl:
+            return hit[1]
 
         try:
-            data = stock.history(period="5d")
+            data = yf.download(
+                list(symbols),
+                period="5d",
+                interval="1d",
+                auto_adjust=False,
+                progress=False,
+                threads=True,
+            )
+            closes = data["Close"]
+            if len(symbols) == 1:
+                closes = closes.to_frame(symbols[0]) if hasattr(closes, "to_frame") else closes
         except Exception:
-            continue
+            if hit:
+                return hit[1]
+            raise
 
-        if data.empty or len(data) < 2:
-            continue
+        result = {}
+        for symbol in symbols:
+            if symbol not in closes.columns:
+                continue
+            series = closes[symbol].dropna()
+            if len(series) < 2:
+                continue
+            result[symbol] = (float(series.iloc[-1]), float(series.iloc[-2]))
 
-        close_prices = data["Close"].dropna()
+        _closes_cache[symbols] = (time.time(), result)
+        return result
 
-        if len(close_prices) < 2:
-            continue
 
-        today = close_prices.iloc[-1]
-        yesterday = close_prices.iloc[-2]
+def get_market_movers():
+    closes = get_last_two_closes(MOVER_SYMBOLS, ttl=120)
 
+    movers = []
+    for symbol, (today, yesterday) in closes.items():
         if yesterday == 0:
             continue
-
         change = ((today - yesterday) / yesterday) * 100
-
         if not np.isfinite(change):
             continue
-
         movers.append({
             "symbol": symbol,
-            "price": round(float(today), 2),
-            "change_percent": round(float(change), 2)
+            "price": round(today, 2),
+            "change_percent": round(float(change), 2),
         })
 
-    gainers = sorted(
-        movers,
-        key=lambda x: x["change_percent"],
-        reverse=True
-    )
+    gainers = sorted(movers, key=lambda x: x["change_percent"], reverse=True)
+    losers = sorted(movers, key=lambda x: x["change_percent"])
 
-    losers = sorted(
-        movers,
-        key=lambda x: x["change_percent"]
-    )
-
-    return {
-    "gainers": gainers[:3],
-    "losers": losers[:3]
-}
+    return {"gainers": gainers[:3], "losers": losers[:3]}
 
 
 def search_stock_symbols(query: str):

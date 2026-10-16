@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.supabase import admin_supabase
 from app.auth import get_current_user
-from app.services.yahoo_service import get_stock_data
+from app.services.yahoo_service import get_stock_data, get_last_two_closes
 
 router = APIRouter()
 class BuyRequest(BaseModel):
@@ -106,27 +106,36 @@ def get_portfolio_summary(
         overall_pnl = 0.0
         today_pnl = 0.0
 
-        for holding in holdings:
-
-            stock_result = (
+        stock_ids = [h["stock_id"] for h in holdings]
+        stocks_by_id = {}
+        if stock_ids:
+            stocks_result = (
                 admin_supabase
                 .table("stocks")
-                .select("current_price, symbol")
-                .eq("id", holding["stock_id"])
-                .maybe_single()
+                .select("id, current_price, symbol")
+                .in_("id", stock_ids)
                 .execute()
             )
+            stocks_by_id = {s["id"]: s for s in (stocks_result.data or [])}
 
-            if not stock_result.data:
+         # ONE Yahoo call for all previous closes (cached 60s)
+        symbols = [s["symbol"] for s in stocks_by_id.values() if s.get("symbol")]
+        try:
+            closes = get_last_two_closes(symbols)
+        except Exception as e:
+            print("Could not fetch previous closes:", repr(e))
+            closes = {}
+
+        for holding in holdings:
+            stock_row = stocks_by_id.get(holding["stock_id"])
+            if not stock_row:
                 continue
 
             quantity = int(holding.get("quantity") or 0)
             buy_price = float(holding.get("buy_price") or 0)
-            current_price = float(
-                stock_result.data.get("current_price") or 0
-            )
+            current_price = float(stock_row.get("current_price") or 0)
+            symbol = stock_row.get("symbol")
 
-            symbol = stock_result.data.get("symbol")
             invested = quantity * buy_price
             current = quantity * current_price
 
@@ -141,34 +150,18 @@ def get_portfolio_summary(
                 "pnl": round(current - invested, 2),
             })
 
-            invested = quantity * buy_price
-            current = quantity * current_price
-
             invested_value += invested
             current_value += current
             overall_pnl += current - invested
 
-            # Today's P&L
-            if symbol:
-                try:
-                    live_data = get_stock_data(symbol)
-
-                    previous_close = live_data.get("previousClose")
-
-                    if previous_close is not None:
-                        today_pnl += quantity * (
-                            current_price - float(previous_close)
-                        )
-
-                except Exception as e:
-                    print(
-                        f"Could not fetch previousClose for {symbol}:",
-                        repr(e)
-                    )
+            # Today's P&L, using the batched previous close
+            if symbol in closes:
+                _, previous_close = closes[symbol]
+                today_pnl += quantity * (current_price - previous_close)
 
         total_value = available_balance + current_value
-
         previous_total_value = total_value - today_pnl
+        
 
         today_pnl_percent = (
             (today_pnl / previous_total_value) * 100
