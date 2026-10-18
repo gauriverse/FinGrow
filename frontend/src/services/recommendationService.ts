@@ -26,3 +26,33 @@ export async function getRecommendations() {
 
   return response.json();
 }
+
+export async function getStockExplanation(symbol: string) {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    throw new Error("User is not authenticated");
+  }
+
+  const response = await fetch(
+    `http://127.0.0.1:8000/recommendations/${encodeURIComponent(symbol)}/explanation`,
+    {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+
+    throw new Error(
+      errorData?.detail || "Failed to load stock explanation",
+    );
+  }
+
+  return response.json();
+}

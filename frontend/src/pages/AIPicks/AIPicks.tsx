@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiSettings, FiLogOut } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
-import { getRecommendations } from "../../services/recommendationService";
+import {
+  getRecommendations,
+  getStockExplanation,
+} from "../../services/recommendationService";
 import {
   getPortfolioSummary,
   buyStock,
@@ -22,6 +25,54 @@ type Recommendation = {
   horizon_context: string;
   suggested_allocation: number;
 };
+
+type FeatureContribution = {
+  feature_name: string;
+  feature_value: number;
+  shap_value: number;
+  direction: "positive" | "negative" | "neutral";
+};
+
+type StockExplanation = {
+  symbol: string;
+  predicted_class: number;
+  predicted_probability: number;
+  baseline_probability: number;
+  contributions: FeatureContribution[];
+  top_positive_features: FeatureContribution[];
+  top_negative_features: FeatureContribution[];
+  explanation_method: string;
+  warning: string | null;
+};
+
+const formatFeatureName = (name: string) => {
+  const featureNames: Record<string, string> = {
+    SMA_Ratio_20: "SMA Ratio (20-day)",
+    SMA_Ratio_50: "SMA Ratio (50-day)",
+    Return_1D: "1-Day Return",
+    Return_5D: "5-Day Return",
+    Return_20D: "20-Day Return",
+    Volatility_5D: "5-Day Volatility",
+    Volatility_20D: "20-Day Volatility",
+    Volume_Ratio_20: "Volume Ratio (20-day)",
+    High_Low_Range: "High-Low Range",
+    Close_Open_Range: "Close-Open Range",
+  };
+
+  const cleanName = name
+    .replace(/&#x[0-9a-f]+;/gi, "")
+    .replace(/&amp;/gi, "&")
+    .trim();
+
+  console.log("XAI feature name:", {
+  original: name,
+  cleanName,
+  formatted: featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " "),
+});
+
+  return featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " ");
+};
+
 
 export default function AIPicks() {
   const navigate = useNavigate();
@@ -66,6 +117,74 @@ export default function AIPicks() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  
+  const [explanations, setExplanations] = useState<
+    Record<string, StockExplanation>
+  >({});
+  const [expandedExplanation, setExpandedExplanation] = useState<
+    Record<string, boolean>
+  >({});
+  const [explanationLoading, setExplanationLoading] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [explanationErrors, setExplanationErrors] = useState<
+    Record<string, string>
+  >({});
+
+  
+  const handleLoadExplanation = async (symbol: string) => {
+    // If the explanation is already cached, simply toggle its visibility.
+    if (explanations[symbol]) {
+      setExpandedExplanation((previous) => ({
+        ...previous,
+        [symbol]: !previous[symbol],
+      }));
+      return;
+    }
+
+    // Prevent duplicate requests for the same stock.
+    if (explanationLoading[symbol]) {
+      return;
+    }
+
+    setExpandedExplanation((previous) => ({
+      ...previous,
+      [symbol]: true,
+    }));
+    setExplanationLoading((previous) => ({
+      ...previous,
+      [symbol]: true,
+    }));
+    setExplanationErrors((previous) => ({
+      ...previous,
+      [symbol]: "",
+    }));
+
+    try {
+      const data = (await getStockExplanation(symbol)) as StockExplanation;
+
+      setExplanations((previous) => ({
+        ...previous,
+        [symbol]: data,
+      }));
+    } catch (requestError) {
+      setExplanationErrors((previous) => ({
+        ...previous,
+        [symbol]:
+          requestError instanceof Error
+            ? requestError.message
+            : "Failed to load the stock explanation. Please try again.",
+      }));
+    } finally {
+      setExplanationLoading((previous) => ({
+        ...previous,
+        [symbol]: false,
+      }));
+    }
+  };
+
 
   // =====================================================
   // LOAD USER + PROFILE + WALLET
@@ -1004,7 +1123,7 @@ export default function AIPicks() {
 
         {/* Recommendation cards */}
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recommendations.map((recommendation) => {
             const volatilityLabel =
               getRiskLabel(
@@ -1014,7 +1133,7 @@ export default function AIPicks() {
             return (
               <div
                 key={recommendation.symbol}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-[#DCE9E2] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+                className="group flex flex-col self-start overflow-hidden rounded-3xl border border-[#DCE9E2] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
               >
                 {/* Card content */}
 
@@ -1131,19 +1250,139 @@ export default function AIPicks() {
                   </div>
 
                   {/* Why this pick */}
-
+                  
+                  {/* Why this pick — SHAP explanation */}
                   <div className="mt-5">
                     <p className="text-sm font-semibold text-[#0B3528]">
                       Why this pick?
                     </p>
 
                     <p className="mt-2 text-xs leading-5 text-gray-600">
-                      Ranked highly by the ML model and compatible with
-                      your selected risk profile.
+                      Ranked by the ML model and checked against your selected
+                      risk profile. Explore which market factors influenced
+                      this stock's prediction.
                     </p>
-                  </div>
-                </div>
 
+                    <button
+                      type="button"
+                      onClick={() => handleLoadExplanation(recommendation.symbol)}
+                      disabled={!!explanationLoading[recommendation.symbol]}
+                      aria-expanded={!!expandedExplanation[recommendation.symbol]}
+                      className="mt-3 rounded-lg border border-[#0F4C3A] px-3 py-2
+                        text-xs font-semibold text-[#0F4C3A] transition
+                        hover:bg-[#F0F7F3] disabled:cursor-not-allowed
+                        disabled:opacity-60"
+                    >
+                      {explanationLoading[recommendation.symbol]
+                        ? "Analyzing market factors..."
+                        : explanations[recommendation.symbol] &&
+                            expandedExplanation[recommendation.symbol]
+                          ? "Hide explanation"
+                          : explanationErrors[recommendation.symbol]
+                            ? "Try again"
+                            : explanations[recommendation.symbol]
+                              ? "Show explanation"
+                              : "Explain this pick"}
+                    </button>
+
+                    {expandedExplanation[recommendation.symbol] && (
+                      <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        {explanationLoading[recommendation.symbol] && (
+                          <p className="text-xs text-gray-500">
+                            Calculating the factors behind this prediction...
+                          </p>
+                        )}
+
+                        {explanationErrors[recommendation.symbol] && (
+                          <p className="text-xs text-red-600">
+                            {explanationErrors[recommendation.symbol]}
+                          </p>
+                        )}
+
+                        {explanations[recommendation.symbol] && (
+                          <>
+                            <p className="text-xs leading-5 text-gray-600">
+                              Model-estimated probability of outperforming the
+                              peer median over the next 20 trading days:
+                            </p>
+
+                            <p className="mt-1 text-lg font-bold text-[#0B3528]">
+                              {formatPercent(
+                                explanations[recommendation.symbol].predicted_probability
+                              )}
+                            </p>
+
+                            <p className="mt-1 text-[11px] leading-4 text-gray-500">
+                              Factors below show how individual features influenced
+                              the model's prediction. They do not guarantee future
+                              performance or represent direct percentage-point changes.
+                            </p>
+
+                            {explanations[recommendation.symbol].top_positive_features
+                              .length > 0 && (
+                              <div className="mt-4">
+                                <p className="text-xs font-semibold text-emerald-700">
+                                  Factors supporting the prediction
+                                </p>
+
+                                {explanations[recommendation.symbol].top_positive_features.map(
+                                  (feature) => (
+                                    <div
+                                      key={feature.feature_name}
+                                      className="mt-2 flex items-start justify-between gap-3"
+                                    >
+                                      <span className="text-xs text-gray-700">
+                                        {formatFeatureName(feature.feature_name)}
+                                      </span>
+                                      <span className="shrink-0 text-xs font-semibold text-emerald-700">
+                                        +{feature.shap_value.toFixed(4)}
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {explanations[recommendation.symbol].top_negative_features
+                              .length > 0 && (
+                              <div className="mt-4">
+                                <p className="text-xs font-semibold text-red-700">
+                                  Factors weighing against the prediction
+                                </p>
+
+                                {explanations[recommendation.symbol].top_negative_features.map(
+                                  (feature) => (
+                                    <div
+                                      key={feature.feature_name}
+                                      className="mt-2 flex items-start justify-between gap-3"
+                                    >
+                                      <span className="text-xs text-gray-700">
+                                        {formatFeatureName(feature.feature_name)}
+                                      </span>
+                                      <span className="shrink-0 text-xs font-semibold text-red-700">
+                                        {feature.shap_value.toFixed(4)}
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {explanations[recommendation.symbol].warning && (
+                              <p className="mt-3 text-xs leading-5 text-amber-700">
+                                {explanations[recommendation.symbol].warning}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+
+                  
+
+                </div>
                 {/* Card action */}
 
                 <div className="mt-auto border-t border-gray-100 bg-gray-50/70 p-5">

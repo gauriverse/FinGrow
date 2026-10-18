@@ -91,7 +91,7 @@ def predict_probability(history_response: dict) -> float:
         "volume": "Volume",
     })
 
-    df["Adj_Close"] = df["Close"]
+    df["Adj_Close"] = df["adj_close"]
     features = calculate_inference_features(df)
 
     latest_features = (
@@ -107,6 +107,7 @@ def predict_probability(history_response: dict) -> float:
     probability = model.predict_proba(latest_features)[0, 1]
 
     return float(probability)
+
 
 
 def rank_stocks():
@@ -128,15 +129,20 @@ def rank_stocks():
         except Exception as e:
             print(f"Could not process {symbol}: {e}")
 
+    # No valid predictions
+    if not rankings:
+        return []
+
+    # Rank by predicted probability of outperforming the peer median
     rankings.sort(
         key=lambda stock: stock["model_probability"],
         reverse=True
     )
 
+    # Calculate volatility percentile safely
     volatilities = sorted(
-    stock["volatility_20d"]
-    for stock in rankings
-)
+        stock["volatility_20d"] for stock in rankings
+    )
 
     for stock in rankings:
         count_below_or_equal = sum(
@@ -149,11 +155,12 @@ def rank_stocks():
             if len(volatilities) > 1
             else 0
         )
-    
+
     for index, stock in enumerate(rankings, start=1):
         stock["rank"] = index
 
     return rankings
+
 
 def get_latest_volatility(history_response: dict) -> float:
     df = pd.DataFrame(history_response["data"])
