@@ -64,6 +64,10 @@ type Progress = {
   completed: boolean;
 };
 
+// Shared presentation classes (UI only)
+const FOCUS_RING =
+  "outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]/40";
+
 export default function Lesson() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -208,26 +212,52 @@ export default function Lesson() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // ---------------------------------------------------------
+  // LOADING (skeleton)
+  // ---------------------------------------------------------
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-sm text-gray-500">
-          Loading lesson...
-        </p>
+      <div
+        className="min-h-screen bg-white"
+        role="status"
+        aria-live="polite"
+      >
+        <span className="sr-only">Loading lesson...</span>
+
+        <div className="border-b border-gray-100">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 h-12 flex items-center">
+            <div className="h-4 w-16 rounded bg-gray-100 animate-pulse motion-reduce:animate-none" />
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-3 animate-pulse motion-reduce:animate-none">
+          <div className="h-3 w-28 rounded bg-gray-100" />
+          <div className="h-9 w-3/4 rounded bg-gray-100" />
+          <div className="h-4 w-full rounded bg-gray-100" />
+          <div className="h-4 w-5/6 rounded bg-gray-100" />
+          <div className="h-24 rounded-lg bg-gray-50 border border-gray-100 mt-5" />
+          <div className="h-4 w-full rounded bg-gray-100" />
+          <div className="h-4 w-2/3 rounded bg-gray-100" />
+        </div>
       </div>
     );
   }
 
+  // ---------------------------------------------------------
+  // ERROR
+  // ---------------------------------------------------------
+
   if (error || !lesson) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
-        <p className="text-sm text-red-500">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3 px-6">
+        <p className="text-sm text-red-500" role="alert">
           {error || "Lesson not found."}
         </p>
 
         <button
           onClick={() => navigate("/learn")}
-          className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition"
+          className={`px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors motion-safe:active:scale-[0.98] ${FOCUS_RING}`}
         >
           Back to Learn
         </button>
@@ -239,24 +269,27 @@ export default function Lesson() {
     <div className="min-h-screen bg-white text-gray-900">
 
       {/* ===================================================== */}
-      {/* TOP BAR */}
+      {/* TOP BAR (sticky, with reading progress) */}
       {/* ===================================================== */}
 
-      <div className="border-b border-gray-100 bg-white">
+      <div className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
 
-        <div className="max-w-4xl mx-auto px-5 sm:px-6">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
 
-          <div className="h-14 flex items-center justify-between">
+          <div className="h-12 flex items-center justify-between">
 
             <button
               onClick={() => navigate("/learn")}
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition"
+              className={`group flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded ${FOCUS_RING}`}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft
+                size={16}
+                className="transition-transform motion-safe:group-hover:-translate-x-0.5"
+              />
               <span>Learn</span>
             </button>
 
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 tabular-nums">
               Lesson {currentLessonNumber} of {totalLessons}
             </span>
 
@@ -264,10 +297,17 @@ export default function Lesson() {
 
           {/* Progress */}
 
-          <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-0">
+          <div
+            className="h-1 bg-gray-100 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-label="Lesson progress"
+            aria-valuenow={currentProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
 
             <div
-              className="h-full bg-[#0F4C3A] transition-all duration-500"
+              className="h-full bg-[#0F4C3A] transition-all duration-500 motion-reduce:transition-none"
               style={{
                 width: `${currentProgress}%`,
               }}
@@ -283,20 +323,20 @@ export default function Lesson() {
       {/* MAIN CONTENT */}
       {/* ===================================================== */}
 
-      <main className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
 
         {/* ================================================= */}
         {/* HEADER */}
         {/* ================================================= */}
 
-        <header className="mb-8">
+        <header className="mb-5">
 
-          <div className="flex items-center gap-2 text-xs font-medium text-[#0F4C3A] mb-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#0F4C3A] mb-2">
             <BookOpen size={15} />
             {lesson.category}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 mb-2">
             {lesson.title}
           </h1>
 
@@ -304,7 +344,7 @@ export default function Lesson() {
             {lesson.description}
           </p>
 
-          <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs text-gray-400">
 
             <span>
               {lesson.difficulty}
@@ -336,7 +376,7 @@ export default function Lesson() {
         {/* CONTENT */}
         {/* ================================================= */}
 
-        <article className="space-y-6">
+        <article className="space-y-4">
 
           {lesson.content?.map((block, index) => {
 
@@ -344,7 +384,7 @@ export default function Lesson() {
               return (
                 <h2
                   key={index}
-                  className="text-xl font-semibold text-gray-900 pt-3"
+                  className="text-xl font-semibold text-gray-900 pt-2"
                 >
                   {block.text}
                 </h2>
@@ -366,9 +406,9 @@ export default function Lesson() {
               return (
                 <div
                   key={index}
-                  className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4"
+                  className="rounded-lg border border-gray-200 border-l-2 border-l-[#0F4C3A] bg-gray-50 px-4 py-3"
                 >
-                  <p className="font-mono text-sm text-[#0F4C3A]">
+                  <p className="font-mono text-sm text-[#0F4C3A] break-words">
                     {block.text}
                   </p>
                 </div>
@@ -379,14 +419,14 @@ export default function Lesson() {
               return (
                 <div
                   key={index}
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-5"
+                  className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3.5"
                 >
 
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
                     Key Points
                   </h3>
 
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
 
                     {block.items.map(
                       (item, itemIndex) => (
@@ -418,11 +458,11 @@ export default function Lesson() {
         {/* COMPLETE */}
         {/* ================================================= */}
 
-        <div className="mt-8 pt-6 border-t border-gray-100">
+        <div className="mt-6 pt-4 border-t border-gray-100">
 
           {completed ? (
 
-            <div className="flex items-center gap-2 text-sm text-[#0F4C3A]">
+            <div className="inline-flex items-center gap-2 rounded-lg bg-[#0F4C3A]/10 px-3 py-2 text-sm text-[#0F4C3A]">
               <CheckCircle2 size={18} />
               <span className="font-medium">
                 Lesson completed
@@ -434,9 +474,17 @@ export default function Lesson() {
             <button
               onClick={handleComplete}
               disabled={completing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0F4C3A] text-white text-sm font-medium hover:bg-[#0b3d2f] disabled:opacity-50 transition"
+              aria-busy={completing}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0F4C3A] text-white text-sm font-medium hover:bg-[#0b3d2f] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 motion-safe:active:scale-[0.98] ${FOCUS_RING}`}
             >
-              <Check size={16} />
+              {completing ? (
+                <span
+                  aria-hidden="true"
+                  className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Check size={16} />
+              )}
 
               {completing
                 ? "Saving..."
@@ -446,7 +494,10 @@ export default function Lesson() {
           )}
 
           {error && (
-            <p className="text-xs text-red-500 mt-3">
+            <p
+              className="text-xs text-red-500 mt-2"
+              role="alert"
+            >
               {error}
             </p>
           )}
@@ -457,69 +508,83 @@ export default function Lesson() {
         {/* PREVIOUS / NEXT */}
         {/* ================================================= */}
 
-        <div className="mt-7 pt-5 border-t border-gray-100">
+        <nav
+          aria-label="Lesson navigation"
+          className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"
+        >
 
-          <div className="flex items-center justify-between gap-4">
+          {/* Previous */}
 
-            {/* Previous */}
+          {previousLesson ? (
 
-            {previousLesson ? (
+            <button
+              onClick={handlePrevious}
+              title={previousLesson.title}
+              className={`group flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-sm text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 transition-colors min-w-0 ${FOCUS_RING}`}
+            >
 
-              <button
-                onClick={handlePrevious}
-                className="group flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition min-w-0"
-              >
+              <ChevronLeft
+                size={17}
+                className="shrink-0 transition-transform motion-safe:group-hover:-translate-x-0.5"
+              />
 
-                <ChevronLeft
-                  size={17}
-                  className="shrink-0"
-                />
-
-                <span className="truncate">
+              <span className="min-w-0">
+                <span className="block text-xs text-gray-400">
                   Previous
                 </span>
-
-              </button>
-
-            ) : (
-              <div />
-            )}
-
-            {/* Next */}
-
-            {nextLesson ? (
-
-              <button
-                onClick={handleNext}
-                className="group flex items-center gap-2 text-sm font-medium text-[#0F4C3A] hover:text-[#0b3d2f] transition min-w-0"
-              >
-
-                <span className="truncate">
-                  Next: {nextLesson.title}
+                <span className="block truncate text-gray-700">
+                  {previousLesson.title}
                 </span>
+              </span>
 
-                <ChevronRight
-                  size={17}
-                  className="shrink-0"
-                />
+            </button>
 
-              </button>
+          ) : (
+            <div className="hidden sm:block" />
+          )}
 
-            ) : (
+          {/* Next */}
 
-              <button
-                onClick={() => navigate("/learn")}
-                className="flex items-center gap-2 text-sm font-medium text-[#0F4C3A] hover:text-[#0b3d2f] transition"
-              >
-                Finish
-                <ArrowRight size={16} />
-              </button>
+          {nextLesson ? (
 
-            )}
+            <button
+              onClick={handleNext}
+              title={nextLesson.title}
+              className={`group flex items-center justify-between gap-2 rounded-lg border border-[#0F4C3A]/20 bg-[#0F4C3A]/5 px-3 py-2 text-left text-sm font-medium text-[#0F4C3A] hover:bg-[#0F4C3A]/10 hover:text-[#0b3d2f] transition-colors min-w-0 ${FOCUS_RING}`}
+            >
 
-          </div>
+              <span className="min-w-0">
+                <span className="block text-xs font-normal text-[#0F4C3A]/70">
+                  Next
+                </span>
+                <span className="block truncate">
+                  {nextLesson.title}
+                </span>
+              </span>
 
-        </div>
+              <ChevronRight
+                size={17}
+                className="shrink-0 transition-transform motion-safe:group-hover:translate-x-0.5"
+              />
+
+            </button>
+
+          ) : (
+
+            <button
+              onClick={() => navigate("/learn")}
+              className={`group flex items-center justify-between gap-2 rounded-lg border border-[#0F4C3A]/20 bg-[#0F4C3A]/5 px-3 py-2.5 text-sm font-medium text-[#0F4C3A] hover:bg-[#0F4C3A]/10 hover:text-[#0b3d2f] transition-colors sm:col-start-2 ${FOCUS_RING}`}
+            >
+              Finish
+              <ArrowRight
+                size={16}
+                className="transition-transform motion-safe:group-hover:translate-x-0.5"
+              />
+            </button>
+
+          )}
+
+        </nav>
 
       </main>
     </div>
