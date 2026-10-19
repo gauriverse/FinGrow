@@ -10,9 +10,7 @@ export default function AuthCallback() {
     const finishAuth = async () => {
       const { data, error } = await supabase.auth.getSession();
 
-      // TEMPORARY DEBUG — remove after testing
-      console.log("SUPABASE SESSION:", data.session);
-      console.log("ACCESS TOKEN:", data.session?.access_token);
+      
 
       if (error || !data.session) {
         setError(
