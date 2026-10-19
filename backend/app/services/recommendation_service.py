@@ -1,7 +1,12 @@
 from app.supabase import admin_supabase
 
-from app.ml.inference import rank_stocks
 
+from app.ml.fuzzy_risk import assess_fuzzy_risk
+from app.ml.inference import (
+    rank_stocks,
+    get_latest_risk_indicators,
+)
+from app.services.yahoo_service import get_stock_history
 
 def get_user_profile(user_id: str):
     result = (
@@ -24,6 +29,9 @@ def get_user_profile(user_id: str):
 
 def get_ranked_candidates():
     rankings = rank_stocks()
+
+    symbols = [stock["symbol"] for stock in rankings]
+    
 
     return rankings
 
@@ -64,6 +72,8 @@ def enrich_candidates():
             "exchange": stock["exchange"],
             "current_price": stock["current_price"],
         })
+        symbols = [stock["symbol"] for stock in enriched]
+        
 
     return enriched
 RISK_MAX_VOLATILITY_PERCENTILE = {
@@ -72,6 +82,30 @@ RISK_MAX_VOLATILITY_PERCENTILE = {
     "aggressive": 75,
     "very-aggressive": 100,
 }
+
+def enrich_fuzzy_risk(candidate: dict) -> dict:
+    """Add fuzzy risk assessment using the stock's latest history."""
+    history_response = get_stock_history(candidate["symbol"])
+
+    indicators = get_latest_risk_indicators(history_response)
+
+    fuzzy_result = assess_fuzzy_risk(
+        volatility_percentile=float(
+            candidate["volatility_percentile"]
+        ),
+        momentum_pct=indicators["momentum_pct"],
+        drawdown_pct=indicators["drawdown_pct"],
+    )
+    
+
+    return {
+        **candidate,
+        "fuzzy_risk_score": fuzzy_result.risk_score,
+        "fuzzy_risk_category": fuzzy_result.risk_category,
+        "fuzzy_risk_explanation": fuzzy_result.explanation,
+        "momentum_pct": indicators["momentum_pct"],
+        "drawdown_pct": indicators["drawdown_pct"],
+    }
 
 
 def is_risk_compatible(
@@ -115,6 +149,7 @@ def get_horizon_context(investment_horizon: str) -> str:
 
     return "The model's approximately 20-trading-day prediction horizon should be considered when interpreting this recommendation."
 
+
 def personalize_candidates(user_id: str):
     profile = get_user_profile(user_id)
     candidates = enrich_candidates()
@@ -129,19 +164,37 @@ def personalize_candidates(user_id: str):
     personalized = []
 
     for candidate in candidates:
+        try:
+            assessed_candidate = enrich_fuzzy_risk(candidate)
+        except (ValueError, KeyError, TypeError) as exc:
+            print(
+                f"Skipping fuzzy risk assessment for "
+                f"{candidate.get('symbol')}: {exc}"
+            )
+            assessed_candidate = {
+                **candidate,
+                "fuzzy_risk_score": None,
+                "fuzzy_risk_category": "Unavailable",
+                "fuzzy_risk_explanation": (
+                    "Risk assessment is unavailable because "
+                    "the required market data could not be calculated."
+                ),
+            }
+
         compatible = is_risk_compatible(
             risk_level,
             candidate["volatility_percentile"]
         )
 
         personalized.append({
-            **candidate,
+            **assessed_candidate,
             "risk_compatible": compatible,
             "goal_context": goal_context,
             "horizon_context": horizon_context,
         })
 
     return personalized
+
 def get_user_holdings(user_id: str):
     result = (
         admin_supabase
@@ -176,26 +229,45 @@ def get_available_balance(user_id: str):
         raise Exception("Available paper balance is not set")
 
     return float(available_balance)
+
 def allocate_recommendations(user_id: str):
     candidates = personalize_candidates(user_id)
-    available_balance = get_available_balance(user_id)
+    available_balance = float(get_available_balance(user_id))
+
+    if available_balance <= 0:
+        return []
 
     eligible = [
         candidate
         for candidate in candidates
-        if candidate["risk_compatible"]
+        if candidate.get("risk_compatible", False)
     ]
 
-    top_candidates = eligible[:3]
+    # Defensive safeguard: prevent duplicate stock allocations.
+    unique_eligible = []
+    seen_symbols = set()
 
+    for candidate in eligible:
+        symbol = candidate.get("symbol")
+
+        if symbol and symbol not in seen_symbols:
+            seen_symbols.add(symbol)
+            unique_eligible.append(candidate)
+
+    top_candidates = unique_eligible[:3]
+
+    if not top_candidates:
+        return []
+
+    # Normalize percentages if fewer than three stocks are eligible.
     allocation_percentages = [0.50, 0.30, 0.20]
+    percentages = allocation_percentages[:len(top_candidates)]
+    total_percentage = sum(percentages)
+    percentages = [p / total_percentage for p in percentages]
 
     recommendations = []
 
-    for candidate, percentage in zip(
-        top_candidates,
-        allocation_percentages
-    ):
+    for candidate, percentage in zip(top_candidates, percentages):
         recommendations.append({
             **candidate,
             "suggested_allocation": round(

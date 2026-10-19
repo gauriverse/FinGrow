@@ -188,3 +188,39 @@ def get_latest_volatility(history_response: dict) -> float:
         raise ValueError("Not enough data to calculate volatility.")
 
     return float(latest.iloc[0])
+
+def get_latest_risk_indicators(history_response: dict) -> dict:
+    """Calculate momentum and drawdown from recent stock history."""
+    df = pd.DataFrame(history_response["data"])
+
+    if df.empty or "adj_close" not in df.columns:
+        raise ValueError("Stock history has no adjusted closing prices.")
+
+    prices = pd.to_numeric(
+        df["adj_close"], errors="coerce"
+    ).dropna()
+
+    if len(prices) < 21:
+        raise ValueError("Not enough price history for risk indicators.")
+
+    current_price = float(prices.iloc[-1])
+    price_5d_ago = float(prices.iloc[-6])
+
+    # Five-observation price momentum, expressed as a percentage.
+    momentum_pct = (
+        (current_price / price_5d_ago) - 1
+    ) * 100
+
+    # Maximum drawdown from the rolling 20-observation peak.
+    recent_prices = prices.tail(20)
+    recent_peak = float(recent_prices.max())
+
+    drawdown_pct = max(
+        0.0,
+        (1 - current_price / recent_peak) * 100
+    )
+
+    return {
+        "momentum_pct": float(momentum_pct),
+        "drawdown_pct": float(drawdown_pct),
+    }
