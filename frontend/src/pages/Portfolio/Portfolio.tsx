@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../../components/Sidebar";
 import {
   FiSettings,
   FiLogOut,
@@ -173,17 +174,15 @@ function SortableTh({
     <th
       scope="col"
       aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
-      className={`px-4 py-2 ${
-        align === "left" ? "text-left" : "text-right"
-      } ${sticky ? "sticky left-0 z-10 bg-slate-50" : ""}`}
+      className={`px-4 py-2 ${align === "left" ? "text-left" : "text-right"
+        } ${sticky ? "sticky left-0 z-10 bg-slate-50" : ""}`}
     >
       <button
         type="button"
         onClick={() => onSort(sortKey)}
         title={title ?? `Sort by ${label}`}
-        className={`inline-flex items-center gap-1 rounded text-xs font-semibold uppercase tracking-wide transition-colors ${
-          active ? "text-[#0F4C3A]" : "text-slate-400 hover:text-slate-600"
-        } ${FOCUS}`}
+        className={`inline-flex items-center gap-1 rounded text-xs font-semibold uppercase tracking-wide transition-colors ${active ? "text-[#0F4C3A]" : "text-slate-400 hover:text-slate-600"
+          } ${FOCUS}`}
       >
         {label}
 
@@ -245,15 +244,15 @@ function PortfolioCharts({
     const baseSlices =
       groupBy === "sector" && sectors && sectors.length > 0
         ? sectors.map((sector) => ({
-            name: sector.sector,
-            value: Math.max(0, Number(sector.value) || 0),
-            isCash: false,
-          }))
+          name: sector.sector,
+          value: Math.max(0, Number(sector.value) || 0),
+          isCash: false,
+        }))
         : grouped.map((group) => ({
-            name: group.name,
-            value: Math.max(0, group.current_value),
-            isCash: false,
-          }));
+          name: group.name,
+          value: Math.max(0, group.current_value),
+          isCash: false,
+        }));
 
     const slices = [
       ...baseSlices,
@@ -322,11 +321,10 @@ function PortfolioCharts({
                   type="button"
                   onClick={() => setGroupBy(option)}
                   aria-pressed={groupBy === option}
-                  className={`px-2.5 py-1 rounded-md capitalize transition-colors ${FOCUS} ${
-                    groupBy === option
+                  className={`px-2.5 py-1 rounded-md capitalize transition-colors ${FOCUS} ${groupBy === option
                       ? "bg-white text-[#0B3528] shadow-sm"
                       : "text-slate-500 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -492,7 +490,7 @@ function PortfolioCharts({
 
 export default function Portfolio() {
   const navigate = useNavigate();
-  const location = useLocation();
+
   const profileRef = useRef<HTMLDivElement | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -672,48 +670,9 @@ export default function Portfolio() {
   // NAVIGATION
   // =====================================================
 
-  const navItems = [
-    "Dashboard",
-    "AI Picks",
-    "Portfolio",
-    "Watchlist",
-    "Learn",
-    "Settings",
-  ];
 
-  const handleNavigation = (item: string) => {
-    setSidebarOpen(false);
 
-    if (item === "Dashboard") {
-      navigate("/dashboard");
-      return;
-    }
 
-    if (item === "AI Picks") {
-      navigate("/ai-picks");
-      return;
-    }
-
-    if (item === "Portfolio") {
-      navigate("/portfolio");
-      return;
-    }
-
-    if (item === "Settings") {
-      navigate("/settings");
-      return;
-    }
-
-    if (item === "Watchlist") {
-      navigate("/watchlist");
-      return;
-    }
-
-    if (item === "Learn") {
-      navigate("/learn");
-      return;
-    }
-  };
 
   // =====================================================
   // LOGOUT
@@ -758,8 +717,7 @@ export default function Portfolio() {
 
     if (quantity > sellStockData.quantity) {
       setSellError(
-        `You only own ${sellStockData.quantity} share${
-          sellStockData.quantity === 1 ? "" : "s"
+        `You only own ${sellStockData.quantity} share${sellStockData.quantity === 1 ? "" : "s"
         }.`,
       );
       return;
@@ -829,7 +787,7 @@ export default function Portfolio() {
 
     if (amount < 0) {
       return `-${formatCurrency(Math.abs(amount))}`;
-}
+    }
 
     return formatCurrency(amount);
   };
@@ -840,7 +798,7 @@ export default function Portfolio() {
   // Same expression the modal used inline, computed once.
   const sellEstimate = sellStockData
     ? sellStockData.current_price *
-      Math.max(0, Math.floor(Number(sellQuantity) || 0))
+    Math.max(0, Math.floor(Number(sellQuantity) || 0))
     : 0;
 
   // =====================================================
@@ -927,81 +885,7 @@ export default function Portfolio() {
             SIDEBAR
         ================================================= */}
 
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-50 flex">
-            <motion.div
-              className="absolute inset-0 bg-black/30"
-              onClick={() => setSidebarOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-            />
-
-            <motion.aside
-              className="relative w-64 bg-[#0B1B2E] text-white flex flex-col shadow-xl"
-              initial={{ x: -24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <div className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-                    F
-                  </div>
-
-                  <span className="font-bold text-lg font-serif tracking-tight">
-                    FinGrow
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  aria-label="Close menu"
-                  className={`p-1.5 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors ${FOCUS}`}
-                >
-                  <FiX size={18} />
-                </button>
-              </div>
-
-              <nav
-                aria-label="Main navigation"
-                className="flex-1 px-3 space-y-0.5"
-              >
-                {navItems.map((item) => {
-                  const active =
-                    item === "Portfolio" && location.pathname === "/portfolio";
-
-                  return (
-                    <button
-                      key={item}
-                      onClick={() => handleNavigation(item)}
-                      aria-current={active ? "page" : undefined}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${FOCUS} ${
-                        active
-                          ? "bg-white/10 text-white"
-                          : "text-slate-400 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          active ? "bg-white" : "bg-slate-500"
-                        }`}
-                      />
-
-                      {item}
-                    </button>
-                  );
-                })}
-              </nav>
-
-              <div className="px-5 py-4 border-t border-white/10">
-                <p className="text-[11px] text-slate-500">
-                  Paper trading · virtual funds only
-                </p>
-              </div>
-            </motion.aside>
-          </div>
-        )}
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         {/* =================================================
             TOP BAR
@@ -1265,14 +1149,14 @@ export default function Portfolio() {
                           key={value}
                           type="button"
                           onClick={() => {
-                            setHoldingsTab(value); 
-                            reloadTrades();}}
+                            setHoldingsTab(value);
+                            reloadTrades();
+                          }}
                           aria-pressed={holdingsTab === value}
-                          className={`px-3 py-1 rounded-md transition-colors ${FOCUS} ${
-                            holdingsTab === value
+                          className={`px-3 py-1 rounded-md transition-colors ${FOCUS} ${holdingsTab === value
                               ? "bg-white text-[#0B3528] shadow-sm"
                               : "text-slate-500 hover:text-slate-700"
-                          }`}
+                            }`}
                         >
                           {label}
                         </button>

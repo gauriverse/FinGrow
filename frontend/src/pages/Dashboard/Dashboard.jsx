@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-
+import Sidebar from "../../components/Sidebar";
 import {
   AnimatePresence,
   MotionConfig,
@@ -117,11 +117,10 @@ function MoverRow({ stock, change, positive, onSelect }) {
         </span>
 
         <span
-          className={`min-w-[4rem] rounded-md px-2 py-0.5 text-center text-xs font-semibold tabular-nums ${
-            positive
+          className={`min-w-[4rem] rounded-md px-2 py-0.5 text-center text-xs font-semibold tabular-nums ${positive
               ? "bg-emerald-50 text-emerald-700"
               : "bg-red-50 text-red-700"
-          }`}
+            }`}
         >
           {change}
         </span>
@@ -182,16 +181,15 @@ function IndexChip({ label, data }) {
           <span className="font-semibold text-slate-900 tabular-nums">
             {data.price
               ? `₹${Number(data.price).toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                })}`
+                minimumFractionDigits: 2,
+              })}`
               : "N/A"}
           </span>
 
           {hasChange && (
             <span
-              className={`font-semibold tabular-nums ${
-                up ? "text-emerald-600" : "text-red-600"
-              }`}
+              className={`font-semibold tabular-nums ${up ? "text-emerald-600" : "text-red-600"
+                }`}
             >
               {`${up ? "▲ +" : "▼ -"}${Math.abs(
                 Number(data.changePercent),
@@ -214,9 +212,8 @@ function MoverTooltip({ active = false, payload = [] }) {
       <p className="font-semibold text-slate-900">{d.label}</p>
 
       <p
-        className={`font-semibold tabular-nums ${
-          d.value >= 0 ? "text-emerald-600" : "text-red-600"
-        }`}
+        className={`font-semibold tabular-nums ${d.value >= 0 ? "text-emerald-600" : "text-red-600"
+          }`}
       >
         {`${d.value >= 0 ? "▲ +" : "▼ -"}${Math.abs(d.value).toFixed(2)}%`}
       </p>
@@ -964,9 +961,8 @@ export default function Dashboard() {
       >
         <span
           aria-hidden="true"
-          className={`h-2 w-2 rounded-full ${
-            inTradingHours ? "bg-emerald-500" : "bg-slate-300"
-          }`}
+          className={`h-2 w-2 rounded-full ${inTradingHours ? "bg-emerald-500" : "bg-slate-300"
+            }`}
         />
 
         <span className="font-medium text-slate-600">
@@ -992,11 +988,11 @@ export default function Dashboard() {
       loading: !portfolio,
       value: portfolio
         ? (() => {
-            const pct = toPercent(portfolio.today_pnl_percent);
-            return pct == null
-              ? null
-              : (portfolio.today_pnl >= 0 ? 1 : -1) * Math.abs(pct);
-          })()
+          const pct = toPercent(portfolio.today_pnl_percent);
+          return pct == null
+            ? null
+            : (portfolio.today_pnl >= 0 ? 1 : -1) * Math.abs(pct);
+        })()
         : null,
     },
     {
@@ -1023,19 +1019,19 @@ export default function Dashboard() {
 
   const moverChartData = marketMovers
     ? [
-        ...(marketMovers.gainers?.slice(0, 5) || []).map((stock) => ({
-          symbol: stock.symbol,
-          label: stock.symbol.replace(".NS", ""),
-          value: Math.abs(Number(stock.change_percent)),
-        })),
-        ...(marketMovers.losers?.slice(0, 5) || []).map((stock) => ({
-          symbol: stock.symbol,
-          label: stock.symbol.replace(".NS", ""),
-          value: -Math.abs(Number(stock.change_percent)),
-        })),
-      ]
-        .filter((d) => Number.isFinite(d.value))
-        .sort((a, b) => b.value - a.value)
+      ...(marketMovers.gainers?.slice(0, 5) || []).map((stock) => ({
+        symbol: stock.symbol,
+        label: stock.symbol.replace(".NS", ""),
+        value: Math.abs(Number(stock.change_percent)),
+      })),
+      ...(marketMovers.losers?.slice(0, 5) || []).map((stock) => ({
+        symbol: stock.symbol,
+        label: stock.symbol.replace(".NS", ""),
+        value: -Math.abs(Number(stock.change_percent)),
+      })),
+    ]
+      .filter((d) => Number.isFinite(d.value))
+      .sort((a, b) => b.value - a.value)
     : null;
 
   // =====================================================
@@ -1069,55 +1065,47 @@ export default function Dashboard() {
   // NAV ITEMS (same labels, same order, same routes)
   // =====================================================
 
-  const navItems = [
-    { label: "Dashboard", icon: FiGrid },
-    { label: "AI Picks", icon: FiZap, path: "/ai-picks" },
-    { label: "Portfolio", icon: FiBriefcase, path: "/portfolio" },
-    { label: "Wallet", icon: FiCreditCard, path: "/wallet" },
-    { label: "Watchlist", icon: FiStar, path: "/watchlist" },
-    { label: "Learn", icon: FiBookOpen, path: "/learn" },
-    { label: "Settings", icon: FiSettings, path: "/settings" },
-  ];
+
 
   // Shared market stat definitions for the selected-stock card
   const stockStats = selectedStock
     ? [
-        {
-          label: "Previous Close",
-          value: formatINR(selectedStock.previousClose),
-          hint: "Price at the end of the previous trading day",
-        },
-        {
-          label: "Open",
-          value: formatINR(selectedStock.open),
-          hint: "Price at the start of today's trading",
-        },
-        {
-          label: "Day High",
-          value: formatINR(selectedStock.dayHigh),
-          hint: "Highest price today",
-        },
-        {
-          label: "Day Low",
-          value: formatINR(selectedStock.dayLow),
-          hint: "Lowest price today",
-        },
-        {
-          label: "Volume",
-          value: formatVolume(selectedStock.volume),
-          hint: "Number of shares traded today",
-        },
-        {
-          label: "Market Cap",
-          value: formatMarketCap(selectedStock.marketCap),
-          hint: "Total market value of all the company's shares",
-        },
-        {
-          label: "Exchange",
-          value: displayExchange(selectedStock.exchange, selectedStock.symbol),
-          hint: "The stock exchange where this stock is listed",
-        },
-      ]
+      {
+        label: "Previous Close",
+        value: formatINR(selectedStock.previousClose),
+        hint: "Price at the end of the previous trading day",
+      },
+      {
+        label: "Open",
+        value: formatINR(selectedStock.open),
+        hint: "Price at the start of today's trading",
+      },
+      {
+        label: "Day High",
+        value: formatINR(selectedStock.dayHigh),
+        hint: "Highest price today",
+      },
+      {
+        label: "Day Low",
+        value: formatINR(selectedStock.dayLow),
+        hint: "Lowest price today",
+      },
+      {
+        label: "Volume",
+        value: formatVolume(selectedStock.volume),
+        hint: "Number of shares traded today",
+      },
+      {
+        label: "Market Cap",
+        value: formatMarketCap(selectedStock.marketCap),
+        hint: "Total market value of all the company's shares",
+      },
+      {
+        label: "Exchange",
+        value: displayExchange(selectedStock.exchange, selectedStock.symbol),
+        hint: "The stock exchange where this stock is listed",
+      },
+    ]
     : [];
 
   const focusRing =
@@ -1134,94 +1122,15 @@ export default function Dashboard() {
             SIDEBAR
         ===================================================== */}
 
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.div
-              key="sidebar-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/30"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-
-        <aside
-          inert={!sidebarOpen}
-          className={`fixed top-0 left-0 z-50 flex h-full w-60 flex-col bg-[#0B1B2E]
-          transform transition-transform duration-300 ease-in-out motion-reduce:transition-none
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        >
-          {/* Logo */}
-
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-[#0F4C3A] font-serif text-lg font-bold text-white">
-                F
-              </div>
-
-              <span className="font-serif text-lg font-bold tracking-tight text-white">
-                FinGrow
-              </span>
-            </div>
-
-            <button
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Close menu"
-              className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white motion-reduce:transition-none ${focusRing}`}
-            >
-              <FiX size={18} />
-            </button>
-          </div>
-
-          {/* Navigation */}
-
-          <nav className="flex-1 space-y-0.5 px-3">
-            {navItems.map((item) => {
-              const active = item.label === "Dashboard";
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.label}
-                  aria-current={active ? "page" : undefined}
-                  onClick={() => {
-                    setSidebarOpen(false);
-
-                    if (item.label === "Dashboard") {
-                      setSelectedStock(null);
-                      setSearchQuery("");
-                      setSearchResults([]);
-                      return;
-                    }
-
-                    navigate(item.path);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 ${focusRing} ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  <Icon
-                    size={16}
-                    className={active ? "text-white" : "text-slate-500"}
-                  />
-
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-white/10 px-5 py-4">
-            <p className="text-[11px] text-slate-500">
-              Paper trading · virtual funds only
-            </p>
-          </div>
-        </aside>
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onDashboardClick={() => {
+            setSelectedStock(null);
+            setSearchQuery("");
+            setSearchResults([]);
+          }}
+        />
 
         {/* =====================================================
             MAIN CONTENT
@@ -1510,11 +1419,10 @@ export default function Dashboard() {
                     {selectedStock.change != null &&
                       selectedStock.changePercent != null && (
                         <p
-                          className={`mt-0.5 text-sm font-semibold tabular-nums ${
-                            Number(selectedStock.change) >= 0
+                          className={`mt-0.5 text-sm font-semibold tabular-nums ${Number(selectedStock.change) >= 0
                               ? "text-emerald-600"
                               : "text-red-600"
-                          }`}
+                            }`}
                         >
                           {Number(selectedStock.change) >= 0 ? "▲" : "▼"}{" "}
                           {Number(selectedStock.change) >= 0 ? "+" : "-"}₹
@@ -1553,9 +1461,8 @@ export default function Dashboard() {
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
                     <span
-                      className={`text-base ${
-                        isWatchlisted ? "text-amber-500" : ""
-                      }`}
+                      className={`text-base ${isWatchlisted ? "text-amber-500" : ""
+                        }`}
                     >
                       {isWatchlisted ? "★" : "☆"}
                     </span>
@@ -1614,11 +1521,10 @@ export default function Dashboard() {
                 sub={
                   portfolio ? (
                     <p
-                      className={`text-xs font-semibold tabular-nums ${
-                        portfolio.overall_pnl >= 0
+                      className={`text-xs font-semibold tabular-nums ${portfolio.overall_pnl >= 0
                           ? "text-emerald-600"
                           : "text-red-600"
-                      }`}
+                        }`}
                     >
                       {`${portfolio.overall_pnl >= 0 ? "▲ +" : "▼ -"}₹${Math.abs(
                         Number(portfolio.overall_pnl),
@@ -1650,11 +1556,10 @@ export default function Dashboard() {
                 sub={
                   portfolio ? (
                     <p
-                      className={`text-xs font-semibold tabular-nums ${
-                        portfolio.today_pnl >= 0
+                      className={`text-xs font-semibold tabular-nums ${portfolio.today_pnl >= 0
                           ? "text-emerald-600"
                           : "text-red-600"
-                      }`}
+                        }`}
                     >
                       {`${portfolio.today_pnl >= 0 ? "▲ +" : "▼ "}${Math.abs(
                         Number(portfolio.today_pnl_percent),
@@ -1682,11 +1587,10 @@ export default function Dashboard() {
                 sub={
                   nifty ? (
                     <p
-                      className={`text-xs font-semibold tabular-nums ${
-                        nifty.changePercent >= 0
+                      className={`text-xs font-semibold tabular-nums ${nifty.changePercent >= 0
                           ? "text-emerald-600"
                           : "text-red-600"
-                      }`}
+                        }`}
                     >
                       {`${nifty.changePercent >= 0 ? "▲ +" : "▼ -"}${Math.abs(
                         nifty.changePercent,
@@ -1733,182 +1637,180 @@ export default function Dashboard() {
             ================================================= */}
 
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-12 xl:items-stretch">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-7">
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
-                  Market Stocks
-                </h2>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-7">
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h2 className="font-serif text-lg font-semibold text-slate-900">
+                    Market Stocks
+                  </h2>
 
-                <p className="text-xs text-slate-400">Latest market prices</p>
+                  <p className="text-xs text-slate-400">Latest market prices</p>
+                </div>
+
+                {!marketMovers ? (
+                  <div
+                    className="grid grid-cols-1 gap-4 md:grid-cols-2"
+                    aria-busy="true"
+                    aria-label="Loading stocks"
+                  >
+                    {[0, 1].map((col) => (
+                      <div key={col} className="space-y-1.5">
+                        <Skeleton className="mb-2 h-4 w-24" />
+
+                        {[0, 1, 2, 3, 4].map((row) => (
+                          <Skeleton key={row} className="h-[50px] w-full" />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {/* TOP GAINERS */}
+
+                    <MoverColumn
+                      title="Top Gainers"
+                      stocks={marketMovers.gainers}
+                      positive={true}
+                      onSelect={handleStockSelect}
+                    />
+
+                    {/* TOP LOSERS */}
+
+                    <MoverColumn
+                      title="Top Losers"
+                      stocks={marketMovers.losers}
+                      positive={false}
+                      onSelect={handleStockSelect}
+                    />
+                  </div>
+                )}
               </div>
 
-              {!marketMovers ? (
-                <div
-                  className="grid grid-cols-1 gap-4 md:grid-cols-2"
-                  aria-busy="true"
-                  aria-label="Loading stocks"
-                >
-                  {[0, 1].map((col) => (
-                    <div key={col} className="space-y-1.5">
-                      <Skeleton className="mb-2 h-4 w-24" />
-
-                      {[0, 1, 2, 3, 4].map((row) => (
-                        <Skeleton key={row} className="h-[50px] w-full" />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {/* TOP GAINERS */}
-
-                  <MoverColumn
-                    title="Top Gainers"
-                    stocks={marketMovers.gainers}
-                    positive={true}
-                    onSelect={handleStockSelect}
-                  />
-
-                  {/* TOP LOSERS */}
-
-                  <MoverColumn
-                    title="Top Losers"
-                    stocks={marketMovers.losers}
-                    positive={false}
-                    onSelect={handleStockSelect}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* =================================================
+              {/* =================================================
                 YOU VS MARKET (today's % change)
             ================================================= */}
 
-            <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 xl:col-span-5">
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
-                  You vs Market
-                </h2>
+              <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 xl:col-span-5">
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h2 className="font-serif text-lg font-semibold text-slate-900">
+                    You vs Market
+                  </h2>
 
-                <p className="text-xs text-slate-400">% change today</p>
-              </div>
+                  <p className="text-xs text-slate-400">% change today</p>
+                </div>
 
-              <div className="flex flex-1 flex-col justify-around gap-3">
-                {compareRows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="grid grid-cols-[6.5rem_1fr_4.5rem] items-center gap-3"
-                  >
-                    <span className="truncate text-sm text-slate-600">
-                      {row.label}
-                    </span>
+                <div className="flex flex-1 flex-col justify-around gap-3">
+                  {compareRows.map((row) => (
+                    <div
+                      key={row.label}
+                      className="grid grid-cols-[6.5rem_1fr_4.5rem] items-center gap-3"
+                    >
+                      <span className="truncate text-sm text-slate-600">
+                        {row.label}
+                      </span>
 
-                    <div className="relative h-2 rounded-full bg-slate-100">
-                      <span
-                        aria-hidden="true"
-                        className="absolute top-[-3px] bottom-[-3px] left-1/2 w-px bg-slate-300"
-                      />
-
-                      {row.value != null && (
+                      <div className="relative h-2 rounded-full bg-slate-100">
                         <span
                           aria-hidden="true"
-                          className={`absolute top-0 h-2 rounded-full transition-[width] duration-500 motion-reduce:transition-none ${
-                            row.value >= 0
-                              ? "left-1/2 bg-emerald-500"
-                              : "right-1/2 bg-red-500"
-                          }`}
-                          style={{
-                            width: `${Math.min(
-                              50,
-                              (Math.abs(row.value) / compareMax) * 50,
-                            )}%`,
-                          }}
+                          className="absolute top-[-3px] bottom-[-3px] left-1/2 w-px bg-slate-300"
                         />
-                      )}
-                    </div>
 
-                    <span
-                      className={`text-right text-sm font-semibold tabular-nums ${
-                        row.value == null
-                          ? "text-slate-400"
-                          : row.value >= 0
-                            ? "text-emerald-600"
-                            : "text-red-600"
-                      }`}
-                    >
-                      {row.loading ? (
-                        <Skeleton className="ml-auto h-3.5 w-12" />
-                      ) : row.value == null ? (
-                        "N/A"
-                      ) : (
-                        `${row.value >= 0 ? "+" : "-"}${Math.abs(
-                          row.value,
-                        ).toFixed(2)}%`
-                      )}
-                    </span>
-                  </div>
-                ))}
+                        {row.value != null && (
+                          <span
+                            aria-hidden="true"
+                            className={`absolute top-0 h-2 rounded-full transition-[width] duration-500 motion-reduce:transition-none ${row.value >= 0
+                                ? "left-1/2 bg-emerald-500"
+                                : "right-1/2 bg-red-500"
+                              }`}
+                            style={{
+                              width: `${Math.min(
+                                50,
+                                (Math.abs(row.value) / compareMax) * 50,
+                              )}%`,
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <span
+                        className={`text-right text-sm font-semibold tabular-nums ${row.value == null
+                            ? "text-slate-400"
+                            : row.value >= 0
+                              ? "text-emerald-600"
+                              : "text-red-600"
+                          }`}
+                      >
+                        {row.loading ? (
+                          <Skeleton className="ml-auto h-3.5 w-12" />
+                        ) : row.value == null ? (
+                          "N/A"
+                        ) : (
+                          `${row.value >= 0 ? "+" : "-"}${Math.abs(
+                            row.value,
+                          ).toFixed(2)}%`
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            </div>
 
-          {/* =================================================
+            {/* =================================================
               MOVERS CHART + KEY TERMS
           ================================================= */}
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-12 xl:items-stretch">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-7">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
-                  Movers at a Glance
-                </h2>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-12 xl:items-stretch">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-7">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <h2 className="font-serif text-lg font-semibold text-slate-900">
+                    Movers at a Glance
+                  </h2>
 
-                <p className="text-xs text-slate-400">% change today</p>
+                  <p className="text-xs text-slate-400">% change today</p>
+                </div>
+
+                {!moverChartData ? (
+                  <Skeleton className="h-56 w-full" />
+                ) : moverChartData.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-slate-200 px-3 py-10 text-center text-xs text-slate-400">
+                    Nothing to show right now.
+                  </p>
+                ) : (
+                  <MoversChart data={moverChartData} onSelect={handleStockSelect} />
+                )}
               </div>
 
-              {!moverChartData ? (
-                <Skeleton className="h-56 w-full" />
-              ) : moverChartData.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-slate-200 px-3 py-10 text-center text-xs text-slate-400">
-                  Nothing to show right now.
-                </p>
-              ) : (
-                <MoversChart data={moverChartData} onSelect={handleStockSelect} />
-              )}
-            </div>
+              <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 xl:col-span-5">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <h2 className="font-serif text-lg font-semibold text-slate-900">
+                    Key Terms
+                  </h2>
 
-            <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 xl:col-span-5">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
-                  Key Terms
-                </h2>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/learn")}
+                    className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#0F4C3A] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]"
+                  >
+                    More in Learn
+                    <FiChevronRight size={13} />
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => navigate("/learn")}
-                  className="inline-flex items-center gap-0.5 text-xs font-semibold text-[#0F4C3A] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]"
-                >
-                  More in Learn
-                  <FiChevronRight size={13} />
-                </button>
+                <dl className="flex flex-1 flex-col justify-between divide-y divide-slate-100">
+                  {keyTerms.map((item) => (
+                    <div key={item.term} className="py-2 first:pt-0 last:pb-0">
+                      <dt className="text-sm font-semibold text-slate-900">
+                        {item.term}
+                      </dt>
+
+                      <dd className="mt-0.5 text-xs text-slate-500">
+                        {item.meaning}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               </div>
-
-              <dl className="flex flex-1 flex-col justify-between divide-y divide-slate-100">
-                {keyTerms.map((item) => (
-                  <div key={item.term} className="py-2 first:pt-0 last:pb-0">
-                    <dt className="text-sm font-semibold text-slate-900">
-                      {item.term}
-                    </dt>
-
-                    <dd className="mt-0.5 text-xs text-slate-500">
-                      {item.meaning}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
             </div>
-          </div>
           </main>
         </div>
 
@@ -2003,11 +1905,10 @@ export default function Dashboard() {
                         setTradeError("");
                       }}
                       disabled={tradeLoading}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${
-                        tradeMode === "amount"
+                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${tradeMode === "amount"
                           ? "bg-white text-[#0F4C3A] shadow-sm"
                           : "text-gray-500 hover:text-gray-700"
-                      }`}
+                        }`}
                     >
                       Invest by ₹
                     </button>
@@ -2035,11 +1936,10 @@ export default function Dashboard() {
                         setTradeError("");
                       }}
                       disabled={tradeLoading}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${
-                        tradeMode === "quantity"
+                      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition motion-reduce:transition-none ${tradeMode === "quantity"
                           ? "bg-white text-[#0F4C3A] shadow-sm"
                           : "text-gray-500 hover:text-gray-700"
-                      }`}
+                        }`}
                     >
                       Buy by shares
                     </button>
@@ -2114,9 +2014,9 @@ export default function Dashboard() {
                         ₹
                         {Number.isFinite(enteredAmount)
                           ? enteredAmount.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
                           : "0.00"}
                       </span>
                     </div>
