@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiSettings, FiLogOut } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
@@ -73,6 +74,284 @@ const formatFeatureName = (name: string) => {
   return featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " ");
 };
 
+// =====================================================
+// PRESENTATION HELPERS (UI only)
+// =====================================================
+
+// Lightweight keyframes. All of them are switched off for users who
+// prefer reduced motion.
+const MOTION_CSS = `
+@keyframes fg-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fg-pop-in { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes fg-rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+.fg-fade-in { animation: fg-fade-in .15s ease-out both }
+.fg-pop-in { animation: fg-pop-in .18s ease-out both }
+.fg-rise { animation: fg-rise .25s ease-out both }
+@media (prefers-reduced-motion: reduce) {
+  .fg-fade-in, .fg-pop-in, .fg-rise { animation: none }
+}
+`;
+
+const getRiskDot = (percentile: number) => {
+  if (percentile <= 25) return "bg-emerald-500";
+  if (percentile <= 50) return "bg-amber-400";
+  if (percentile <= 75) return "bg-amber-500";
+  return "bg-red-500";
+};
+
+function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none ${className}`}
+    />
+  );
+}
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        aria-label={text}
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold text-gray-400 transition-colors hover:border-[#0F4C3A] hover:text-[#0F4C3A] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 motion-reduce:transition-none"
+      >
+        i
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 w-48 rounded-md bg-[#0B1B2E] px-2.5 py-1.5 text-[11px] font-normal normal-case leading-4 tracking-normal text-white opacity-0 shadow-lg transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+type ChromeProps = {
+  children: ReactNode;
+  navItems: string[];
+  pathname: string;
+  sidebarOpen: boolean;
+  onSidebarOpenChange: (open: boolean) => void;
+  onNavigate: (item: string) => void;
+  onLogoClick: () => void;
+  portfolio: any;
+  profileRef: RefObject<HTMLDivElement | null>;
+  profileOpen: boolean;
+  onToggleProfile: () => void;
+  onOpenSettings: () => void;
+  onLogout: () => void;
+  initials: string | undefined;
+  firstName: string;
+  email: string;
+};
+
+// Sidebar + top bar shared by the loading, error and main views.
+function PageChrome({
+  children,
+  navItems,
+  pathname,
+  sidebarOpen,
+  onSidebarOpenChange,
+  onNavigate,
+  onLogoClick,
+  portfolio,
+  profileRef,
+  profileOpen,
+  onToggleProfile,
+  onOpenSettings,
+  onLogout,
+  initials,
+  firstName,
+  email,
+}: ChromeProps) {
+  const isActive = (item: string) =>
+    (item === "Dashboard" && pathname === "/dashboard") ||
+    (item === "AI Picks" && pathname === "/ai-picks");
+
+  return (
+    <div className="min-h-screen bg-[#FAF9F5] font-sans">
+      <style>{MOTION_CSS}</style>
+
+      {/* Sidebar */}
+
+      {sidebarOpen && (
+        <div
+          className="fg-fade-in fixed inset-0 z-40 bg-black/30"
+          onClick={() => onSidebarOpenChange(false)}
+        />
+      )}
+
+      <aside
+        aria-label="Main navigation"
+        className={`fixed top-0 left-0 z-50 flex h-full w-60 transform flex-col bg-[#0B1B2E]
+        transition-transform duration-300 ease-in-out motion-reduce:transition-none
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
+              F
+            </div>
+
+            <span className="font-serif text-lg font-bold tracking-tight text-white">
+              FinGrow
+            </span>
+          </div>
+
+          <button
+            onClick={() => onSidebarOpenChange(false)}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-slate-400 transition hover:bg-white/5 hover:text-white"
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        </div>
+
+        <nav className="flex-1 space-y-0.5 px-3">
+          {navItems.map((item) => {
+            const active = isActive(item);
+
+            return (
+              <button
+                key={item}
+                onClick={() => onNavigate(item)}
+                aria-current={active ? "page" : undefined}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    active ? "bg-white" : "bg-slate-500"
+                  }`}
+                />
+
+                {item}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-white/10 px-5 py-4">
+          <p className="text-[11px] text-slate-500">
+            Paper trading · virtual funds only
+          </p>
+        </div>
+      </aside>
+
+      {/* Top bar */}
+
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onSidebarOpenChange(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-slate-700 transition hover:bg-slate-100 active:scale-95 motion-reduce:transform-none"
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+
+          <button
+            onClick={onLogoClick}
+            className="flex items-center gap-2"
+            aria-label="Go to dashboard"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
+              F
+            </div>
+
+            <span className="font-serif text-lg font-bold tracking-tight text-[#0F4C3A]">
+              FinGrow
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 md:gap-5">
+          <div className="text-right leading-tight">
+            <p className="text-[10px] font-semibold tracking-wide text-slate-400">
+              WALLET
+            </p>
+
+            <p className="text-sm font-bold text-slate-800">
+              {portfolio
+                ? `₹${Number(portfolio.available_balance).toLocaleString(
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                    }
+                  )}`
+                : "Loading..."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF8E8] text-base transition hover:bg-[#FFF1CC] active:scale-95 motion-reduce:transform-none"
+            aria-label="Notifications"
+          >
+            🔔
+          </button>
+
+          <div ref={profileRef} className="relative">
+            <button
+              onClick={onToggleProfile}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A] transition hover:ring-2 hover:ring-emerald-200"
+              aria-label="Open profile menu"
+            >
+              {initials ? initials.toUpperCase() : "U"}
+            </button>
+
+            {profileOpen && (
+              <div className="fg-fade-in absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A]">
+                      {initials ? initials.toUpperCase() : "U"}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {firstName === "there" ? "User" : firstName}
+                      </p>
+
+                      <p className="truncate text-xs text-slate-400">
+                        {email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={onOpenSettings}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                >
+                  <FiSettings size={16} />
+                  Settings
+                </button>
+
+                <button
+                  onClick={onLogout}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition hover:bg-red-50"
+                >
+                  <FiLogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {children}
+    </div>
+  );
+}
 
 export default function AIPicks() {
   const navigate = useNavigate();
@@ -414,6 +693,29 @@ export default function AIPicks() {
     setTradeError("");
   };
 
+  // UI only: allow Esc to dismiss the trade dialog (same reset as Cancel).
+  useEffect(() => {
+    if (!tradeStock) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !tradeLoading) {
+        setTradeStock(null);
+        setTradeQuantity(1);
+        setTradeMode("amount");
+        setTradeAmount("");
+        setTradeError("");
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [tradeStock, tradeLoading]);
+
   const handleConfirmBuy = async () => {
     if (!tradeStock) {
       return;
@@ -610,120 +912,72 @@ export default function AIPicks() {
       : 0;
 
   // =====================================================
+  // SHARED PAGE CHROME (sidebar + top bar)
+  // =====================================================
+
+  const chromeProps = {
+    navItems,
+    pathname: location.pathname,
+    sidebarOpen,
+    onSidebarOpenChange: setSidebarOpen,
+    onNavigate: handleNavigation,
+    onLogoClick: () => navigate("/dashboard"),
+    portfolio,
+    profileRef,
+    profileOpen,
+    onToggleProfile: () => setProfileOpen(!profileOpen),
+    onOpenSettings: () => {
+      setProfileOpen(false);
+      navigate("/settings");
+    },
+    onLogout: handleLogout,
+    initials,
+    firstName,
+    email: profile?.email || "",
+  };
+
+  // =====================================================
   // LOADING
   // =====================================================
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF9F5] font-sans">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() =>
-              setSidebarOpen(false)
-            }
-          />
-        )}
-
-        <aside
-          className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
-          transform transition-transform duration-300 ease-in-out
-          ${
-            sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full"
-          }`}
+      <PageChrome {...chromeProps}>
+        <main
+          className="px-4 py-4 md:px-6"
+          aria-busy="true"
+          aria-live="polite"
         >
-          <div className="flex items-center justify-between px-6 py-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-                F
-              </div>
+          <div className="h-3 w-40 animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
+          <div className="mt-2 h-7 w-40 animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
+          <div className="mt-2 h-4 w-80 max-w-full animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
 
-              <span className="font-bold text-lg text-white font-serif tracking-tight">
-                FinGrow
-              </span>
-            </div>
+          <div className="mt-4 h-12 animate-pulse rounded-xl bg-white shadow-sm motion-reduce:animate-none" />
 
-            <button
-              onClick={() =>
-                setSidebarOpen(false)
-              }
-              className="text-slate-400 hover:text-white text-xl"
-            >
-              
-            </button>
-          </div>
-
-          <nav className="flex-1 px-3 space-y-1">
-            {navItems.map((item) => {
-              const active =
-                item === "AI Picks" &&
-                location.pathname === "/ai-picks";
-
-              return (
-                <button
-                  key={item}
-                  onClick={() =>
-                    handleNavigation(item)
-                  }
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      active
-                        ? "bg-white"
-                        : "bg-slate-500"
-                    }`}
-                  />
-
-                  {item}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="px-6 py-6 border-t border-white/10">
-            <p className="text-[11px] text-slate-500">
-              Paper trading · virtual funds only
-            </p>
-          </div>
-        </aside>
-
-        <header className="flex items-center justify-between px-10 py-5 border-b border-slate-200 bg-white">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() =>
-                setSidebarOpen(true)
-              }
-              className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
-            >
-              ☰
-            </button>
-          </div>
-        </header>
-
-        <main className="px-10 py-7">
-          <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-
-          <div className="mt-4 h-10 w-64 animate-pulse rounded bg-gray-200" />
-
-          <div className="mt-3 h-5 w-96 max-w-full animate-pulse rounded bg-gray-200" />
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="h-[520px] animate-pulse rounded-3xl bg-white shadow-sm"
-              />
+                className="animate-pulse rounded-2xl border border-[#DCE9E2] bg-white p-4 shadow-sm motion-reduce:animate-none"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-5 w-20 rounded-full bg-gray-200" />
+                  <div className="h-4 w-24 rounded bg-gray-200" />
+                </div>
+                <div className="mt-4 h-6 w-28 rounded bg-gray-200" />
+                <div className="mt-2 h-3 w-40 rounded bg-gray-100" />
+                <div className="mt-4 h-20 rounded-xl bg-gray-100" />
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="h-14 rounded-lg bg-gray-100" />
+                  <div className="h-14 rounded-lg bg-gray-100" />
+                </div>
+                <div className="mt-3 h-10 rounded-lg bg-gray-100" />
+                <div className="mt-4 h-10 rounded-xl bg-gray-200" />
+              </div>
             ))}
           </div>
         </main>
-      </div>
+      </PageChrome>
     );
   }
 
@@ -733,116 +987,40 @@ export default function AIPicks() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FAF9F5] font-sans">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() =>
-              setSidebarOpen(false)
-            }
-          />
-        )}
-
-        <aside
-          className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
-          transform transition-transform duration-300 ease-in-out
-          ${
-            sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between px-6 py-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-                F
-              </div>
-
-              <span className="font-bold text-lg text-white font-serif tracking-tight">
-                FinGrow
-              </span>
-            </div>
-
-            <button
-              onClick={() =>
-                setSidebarOpen(false)
-              }
-              className="text-slate-400 hover:text-white text-xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          <nav className="flex-1 px-3 space-y-1">
-            {navItems.map((item) => {
-              const active =
-                item === "AI Picks" &&
-                location.pathname === "/ai-picks";
-
-              return (
-                <button
-                  key={item}
-                  onClick={() =>
-                    handleNavigation(item)
-                  }
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      active
-                        ? "bg-white"
-                        : "bg-slate-500"
-                    }`}
-                  />
-
-                  {item}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="px-6 py-6 border-t border-white/10">
-            <p className="text-[11px] text-slate-500">
-              Paper trading · virtual funds only
-            </p>
-          </div>
-        </aside>
-
-        <header className="flex items-center justify-between px-10 py-5 border-b border-slate-200 bg-white">
-          <button
-            onClick={() =>
-              setSidebarOpen(true)
-            }
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
-          >
-            ☰
-          </button>
-        </header>
-
-        <main className="px-10 py-7">
-          <p className="text-sm font-semibold text-[#10B981]">
+      <PageChrome {...chromeProps}>
+        <main className="px-4 py-4 md:px-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#10B981]">
             FinGrow Intelligence
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-[#0B3528]">
+          <h1 className="mt-1 font-serif text-2xl font-semibold text-slate-900">
             AI Picks
           </h1>
 
-          <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-6">
-            <p className="font-semibold text-red-700">
-              Could not load your AI picks.
-            </p>
+          <div
+            role="alert"
+            className="fg-fade-in mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-red-700">
+                Could not load your AI picks.
+              </p>
 
-            <p className="mt-2 text-sm text-red-600">
-              {error}
-            </p>
+              <p className="mt-1 text-sm text-red-600">
+                {error}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 active:scale-95 motion-reduce:transform-none"
+            >
+              Reload page
+            </button>
           </div>
         </main>
-      </div>
+      </PageChrome>
     );
   }
 
@@ -851,361 +1029,183 @@ export default function AIPicks() {
   // =====================================================
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] font-sans">
-      {/* =====================================================
-          SIDEBAR
-      ===================================================== */}
-
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-40"
-          onClick={() =>
-            setSidebarOpen(false)
-          }
-        />
-      )}
-
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-[#0B1B2E] flex flex-col z-50
-        transform transition-transform duration-300 ease-in-out
-        ${
-          sidebarOpen
-            ? "translate-x-0"
-            : "-translate-x-full"
-        }`}
-      >
-        {/* Logo */}
-
-        <div className="flex items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-              F
-            </div>
-
-            <span className="font-bold text-lg text-white font-serif tracking-tight">
-              FinGrow
-            </span>
-          </div>
-
-          <button
-            onClick={() =>
-              setSidebarOpen(false)
-            }
-            className="text-slate-400 hover:text-white text-xl"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Navigation */}
-
-        <nav className="flex-1 px-3 space-y-1">
-          {navItems.map((item) => {
-            const active =
-              (item === "Dashboard" &&
-                location.pathname === "/dashboard") ||
-              (item === "AI Picks" &&
-                location.pathname === "/ai-picks");
-
-            return (
-              <button
-                key={item}
-                onClick={() =>
-                  handleNavigation(item)
-                }
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                  active
-                    ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    active
-                      ? "bg-white"
-                      : "bg-slate-500"
-                  }`}
-                />
-
-                {item}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="px-6 py-6 border-t border-white/10">
-          <p className="text-[11px] text-slate-500">
-            Paper trading · virtual funds only
-          </p>
-        </div>
-      </aside>
-
-      {/* =====================================================
-    TOP BAR
-===================================================== */}
-
-<header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-10">
-  {/* Left */}
-
-  <div className="flex items-center gap-4">
-    {/* Menu */}
-
-    <button
-      onClick={() => setSidebarOpen(true)}
-      className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-xl text-slate-700"
-      aria-label="Open menu"
-    >
-      ☰
-    </button>
-
-    {/* FinGrow */}
-
-    <button
-      onClick={() => navigate("/dashboard")}
-      className="flex items-center gap-2"
-    >
-      <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
-        F
-      </div>
-
-      <span className="font-bold text-xl tracking-tight font-serif text-[#0F4C3A]">
-        FinGrow
-      </span>
-    </button>
-  </div>
-
-  {/* Right */}
-
-  <div className="flex items-center gap-4 md:gap-6">
-    {/* Wallet */}
-
-    <div className="text-right">
-      <p className="text-[10px] font-semibold text-slate-400 tracking-wide">
-        WALLET
-      </p>
-
-      <p className="text-sm font-bold text-slate-800">
-        {portfolio
-          ? `₹${Number(
-              portfolio.available_balance
-            ).toLocaleString("en-IN", {
-              minimumFractionDigits: 2,
-            })}`
-          : "Loading..."}
-      </p>
-    </div>
-
-    {/* Notification */}
-
-    <button
-      type="button"
-      className="w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-lg"
-      aria-label="Notifications"
-    >
-      🔔
-    </button>
-
-    {/* Profile */}
-
-    <div
-      ref={profileRef}
-      className="relative"
-    >
-      <button
-        onClick={() =>
-          setProfileOpen(!profileOpen)
-        }
-        className="w-10 h-10 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition"
-        aria-label="Open profile menu"
-      >
-        {initials
-          ? initials.toUpperCase()
-          : "U"}
-      </button>
-
-      {profileOpen && (
-        <div className="absolute right-0 top-12 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-          {/* User info */}
-
-          <div className="px-4 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
-                {initials
-                  ? initials.toUpperCase()
-                  : "U"}
-              </div>
-
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-900 truncate">
-                  {firstName === "there"
-                    ? "User"
-                    : firstName}
-                </p>
-
-                <p className="text-xs text-slate-400 truncate">
-                  {profile?.email || ""}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Settings */}
-
-          <button
-            onClick={() => {
-              setProfileOpen(false);
-              navigate("/settings");
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
-          >
-            <FiSettings size={17} />
-            Settings
-          </button>
-
-          {/* Logout */}
-
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
-          >
-            <FiLogOut size={17} />
-            Logout
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-</header>
-
+    <PageChrome {...chromeProps}>
       {/* =====================================================
           AI PICKS CONTENT
       ===================================================== */}
 
-      <main className="flex-1 px-10 py-7">
+      <main className="flex-1 px-4 py-4 md:px-6">
         {/* Header */}
 
-        <div className="max-w-3xl">
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-            Personalized recommendations
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              Personalized recommendations
+            </p>
 
-          <h1 className="mt-1 text-3xl font-serif font-semibold text-slate-900">
-            AI Picks
-          </h1>
+            <h1 className="mt-0.5 font-serif text-2xl font-semibold text-slate-900">
+              AI Picks
+            </h1>
 
-          <p className="mt-3 text-base leading-7 text-gray-600">
-            Personalized stock signals based on market data and your
-            investment profile.
-          </p>
+            <p className="mt-1 text-sm leading-5 text-gray-600">
+              Personalized stock signals based on market data and your
+              investment profile.
+            </p>
+          </div>
+
+          {recommendations.length > 0 && (
+            <span className="rounded-full border border-[#DCE9E2] bg-white px-3 py-1 text-xs font-semibold text-[#0F4C3A]">
+              {recommendations.length}{" "}
+              {recommendations.length === 1 ? "pick" : "picks"}
+            </span>
+          )}
         </div>
 
         {/* How FinGrow generates these picks */}
 
-        <div className="mt-8 rounded-3xl border border-[#DCE9E2] bg-white p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F7EF] text-[#0F4C3A]">
-              ✦
-            </div>
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-[#DCE9E2] bg-white px-3.5 py-3 shadow-sm">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E8F7EF] text-sm text-[#0F4C3A]">
+            ✦
+          </div>
 
-            <div>
-              <h2 className="font-semibold text-[#0B3528]">
-                How FinGrow generates these picks
-              </h2>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-[#0B3528]">
+              How FinGrow generates these picks
+            </h2>
 
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                FinGrow analyzes recent market data, ranks stocks using
-                machine learning, and matches the results with your risk
-                profile to create personalized paper-trading picks.
-              </p>
-            </div>
+            <p className="mt-0.5 text-xs leading-5 text-gray-600">
+              FinGrow analyzes recent market data, ranks stocks using
+              machine learning, and matches the results with your risk
+              profile to create personalized paper-trading picks.
+            </p>
           </div>
         </div>
 
         {/* Recommendation cards */}
 
-        <div className="mt-8 grid grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {recommendations.map((recommendation) => {
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {recommendations.map((recommendation, index) => {
             const volatilityLabel =
               getRiskLabel(
                 recommendation.volatility_percentile
               );
 
+            const signalWidth = Math.min(
+              100,
+              Math.max(0, recommendation.model_probability * 100)
+            );
+
+            const explanation = explanations[recommendation.symbol];
+            const isExpanded = !!expandedExplanation[recommendation.symbol];
+            const isExplaining = !!explanationLoading[recommendation.symbol];
+            const explanationError = explanationErrors[recommendation.symbol];
+
             return (
-              <div
+              <article
                 key={recommendation.symbol}
-                className="group flex flex-col self-start overflow-hidden rounded-3xl border border-[#DCE9E2] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+                style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                className="fg-rise group flex flex-col self-start overflow-hidden rounded-2xl border border-[#DCE9E2] bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#BFD9CC] hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
               >
                 {/* Card content */}
 
-                <div className="p-6">
+                <div className="p-4">
                   {/* Rank + risk */}
 
                   <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-[#E8F7EF] px-3 py-1.5 text-xs font-semibold text-[#0F4C3A]">
+                    <span className="rounded-full bg-[#E8F7EF] px-2.5 py-1 text-[11px] font-semibold text-[#0F4C3A]">
                       AI Rank #{recommendation.rank}
                     </span>
 
                     {recommendation.risk_compatible && (
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-[#10B981]">
-                        <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
                         Risk compatible
                       </span>
                     )}
                   </div>
 
-                  {/* Stock name */}
+                  {/* Stock name + price */}
 
-                  <div className="mt-7">
-                    <h2 className="text-2xl font-bold tracking-tight text-[#0B3528]">
-                      {recommendation.symbol.replace(
-                        ".NS",
-                        ""
-                      )}
-                    </h2>
+                  <div className="mt-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="truncate text-xl font-bold tracking-tight text-[#0B3528]">
+                          {recommendation.symbol.replace(
+                            ".NS",
+                            ""
+                          )}
+                        </h2>
 
-                    <p className="mt-1 text-sm text-gray-500">
-                      {recommendation.company_name}
-                    </p>
+                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                          NSE
+                        </span>
+                      </div>
 
-                    <p className="mt-1 text-xs text-gray-400">
-                      NSE
-                    </p>
+                      <p
+                        className="truncate text-xs text-gray-500"
+                        title={recommendation.company_name}
+                      >
+                        {recommendation.company_name}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p className="text-[10px] text-gray-400">
+                        Price
+                      </p>
+
+                      <p className="text-sm font-bold text-[#0B3528]">
+                        ₹
+                        {Number(
+                          recommendation.current_price
+                        ).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
                   </div>
 
                   {/* ML Signal */}
 
-                  <div className="mt-7 rounded-2xl bg-[#F1F8F4] p-5">
+                  <div className="mt-3 rounded-xl bg-[#F1F8F4] px-3 py-2.5">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                         ML Signal
+                        <InfoTip text="AI-based market signal for the next ~20 trading days." />
                       </p>
 
-                      <span className="text-xs font-medium text-[#0F4C3A]">
+                      <span className="text-[11px] font-medium text-[#0F4C3A]">
                         ~20D outlook
                       </span>
                     </div>
 
-                    <p className="mt-2 text-4xl font-bold tracking-tight text-[#0F4C3A]">
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-[#0F4C3A]">
                       {formatPercent(
                         recommendation.model_probability
                       )}
                     </p>
 
-                    <p className="mt-2 text-xs leading-5 text-gray-500">
-                      AI-based market signal for the next ~20 trading
-                      days.
-                    </p>
+                    <div
+                      className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white"
+                      aria-hidden="true"
+                    >
+                      <div
+                        className="h-full rounded-full bg-[#10B981] transition-[width] duration-500 ease-out motion-reduce:transition-none"
+                        style={{ width: `${signalWidth}%` }}
+                      />
+                    </div>
                   </div>
 
                   {/* Risk metrics */}
 
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">
+                  <div className="mt-2.5 grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <p className="text-[11px] text-gray-500">
                         20D volatility
                       </p>
 
-                      <p className="mt-1 text-lg font-bold text-[#0B3528]">
+                      <p className="mt-0.5 text-base font-bold text-[#0B3528]">
                         {(
                           recommendation.volatility_20d * 100
                         ).toFixed(2)}
@@ -1213,16 +1213,21 @@ export default function AIPicks() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <p className="text-[11px] text-gray-500">
                         Volatility
                       </p>
 
-                      <p className="mt-1 text-sm font-bold text-[#0B3528]">
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs font-bold leading-4 text-[#0B3528]">
+                        <span
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${getRiskDot(
+                            recommendation.volatility_percentile
+                          )}`}
+                        />
                         {volatilityLabel}
                       </p>
 
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-0.5 text-[10px] text-gray-400">
                         {recommendation.volatility_percentile.toFixed(
                           1
                         )}
@@ -1233,108 +1238,110 @@ export default function AIPicks() {
 
                   {/* Suggested allocation */}
 
-                  <div className="mt-5 rounded-2xl border border-[#DCE9E2] p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <div className="mt-2.5 flex items-center justify-between gap-3 rounded-lg border border-[#DCE9E2] px-3 py-2">
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                       Suggested paper allocation
+                      <InfoTip text="Suggested amount from your virtual balance." />
                     </p>
 
-                    <p className="mt-1 text-2xl font-bold text-[#0B3528]">
+                    <p className="shrink-0 text-base font-bold text-[#0B3528]">
                       {formatCurrency(
                         recommendation.suggested_allocation
                       )}
                     </p>
-
-                    <p className="mt-1 text-xs text-gray-500">
-                      Suggested amount from your virtual balance
-                    </p>
                   </div>
 
-                  {/* Why this pick */}
-                  
                   {/* Why this pick — SHAP explanation */}
-                  <div className="mt-5">
-                    <p className="text-sm font-semibold text-[#0B3528]">
-                      Why this pick?
-                    </p>
 
-                    <p className="mt-2 text-xs leading-5 text-gray-600">
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-[#0B3528]">
+                        Why this pick?
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => handleLoadExplanation(recommendation.symbol)}
+                        disabled={isExplaining}
+                        aria-expanded={isExpanded}
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0F4C3A] px-2.5 py-1.5
+                          text-[11px] font-semibold text-[#0F4C3A] transition
+                          hover:bg-[#F0F7F3] active:scale-95 disabled:cursor-not-allowed
+                          disabled:opacity-60 motion-reduce:transform-none"
+                      >
+                        {isExplaining && <Spinner />}
+                        {isExplaining
+                          ? "Analyzing market factors..."
+                          : explanation && isExpanded
+                            ? "Hide explanation"
+                            : explanationError
+                              ? "Try again"
+                              : explanation
+                                ? "Show explanation"
+                                : "Explain this pick"}
+                      </button>
+                    </div>
+
+                    <p className="mt-1.5 text-[11px] leading-4 text-gray-500">
                       Ranked by the ML model and checked against your selected
                       risk profile. Explore which market factors influenced
                       this stock's prediction.
                     </p>
 
-                    <button
-                      type="button"
-                      onClick={() => handleLoadExplanation(recommendation.symbol)}
-                      disabled={!!explanationLoading[recommendation.symbol]}
-                      aria-expanded={!!expandedExplanation[recommendation.symbol]}
-                      className="mt-3 rounded-lg border border-[#0F4C3A] px-3 py-2
-                        text-xs font-semibold text-[#0F4C3A] transition
-                        hover:bg-[#F0F7F3] disabled:cursor-not-allowed
-                        disabled:opacity-60"
-                    >
-                      {explanationLoading[recommendation.symbol]
-                        ? "Analyzing market factors..."
-                        : explanations[recommendation.symbol] &&
-                            expandedExplanation[recommendation.symbol]
-                          ? "Hide explanation"
-                          : explanationErrors[recommendation.symbol]
-                            ? "Try again"
-                            : explanations[recommendation.symbol]
-                              ? "Show explanation"
-                              : "Explain this pick"}
-                    </button>
-
-                    {expandedExplanation[recommendation.symbol] && (
-                      <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                        {explanationLoading[recommendation.symbol] && (
-                          <p className="text-xs text-gray-500">
-                            Calculating the factors behind this prediction...
-                          </p>
+                    {isExpanded && (
+                      <div className="fg-fade-in mt-2.5 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                        {isExplaining && (
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Spinner />
+                            <p>
+                              Calculating the factors behind this prediction...
+                            </p>
+                          </div>
                         )}
 
-                        {explanationErrors[recommendation.symbol] && (
+                        {explanationError && (
                           <p className="text-xs text-red-600">
-                            {explanationErrors[recommendation.symbol]}
+                            {explanationError}
                           </p>
                         )}
 
-                        {explanations[recommendation.symbol] && (
+                        {explanation && (
                           <>
-                            <p className="text-xs leading-5 text-gray-600">
-                              Model-estimated probability of outperforming the
-                              peer median over the next 20 trading days:
-                            </p>
+                            <div className="flex items-end justify-between gap-3">
+                              <p className="text-[11px] leading-4 text-gray-600">
+                                Model-estimated probability of outperforming the
+                                peer median over the next 20 trading days:
+                              </p>
 
-                            <p className="mt-1 text-lg font-bold text-[#0B3528]">
-                              {formatPercent(
-                                explanations[recommendation.symbol].predicted_probability
-                              )}
-                            </p>
+                              <p className="shrink-0 text-lg font-bold leading-none text-[#0B3528]">
+                                {formatPercent(
+                                  explanation.predicted_probability
+                                )}
+                              </p>
+                            </div>
 
-                            <p className="mt-1 text-[11px] leading-4 text-gray-500">
+                            <p className="mt-1.5 text-[11px] leading-4 text-gray-500">
                               Factors below show how individual features influenced
                               the model's prediction. They do not guarantee future
                               performance or represent direct percentage-point changes.
                             </p>
 
-                            {explanations[recommendation.symbol].top_positive_features
-                              .length > 0 && (
-                              <div className="mt-4">
+                            {explanation.top_positive_features.length > 0 && (
+                              <div className="mt-3">
                                 <p className="text-xs font-semibold text-emerald-700">
                                   Factors supporting the prediction
                                 </p>
 
-                                {explanations[recommendation.symbol].top_positive_features.map(
+                                {explanation.top_positive_features.map(
                                   (feature) => (
                                     <div
                                       key={feature.feature_name}
-                                      className="mt-2 flex items-start justify-between gap-3"
+                                      className="mt-1.5 flex items-start justify-between gap-3 rounded px-1 py-0.5 transition-colors hover:bg-white"
                                     >
                                       <span className="text-xs text-gray-700">
                                         {formatFeatureName(feature.feature_name)}
                                       </span>
-                                      <span className="shrink-0 text-xs font-semibold text-emerald-700">
+                                      <span className="shrink-0 text-xs font-semibold tabular-nums text-emerald-700">
                                         +{feature.shap_value.toFixed(4)}
                                       </span>
                                     </div>
@@ -1343,23 +1350,22 @@ export default function AIPicks() {
                               </div>
                             )}
 
-                            {explanations[recommendation.symbol].top_negative_features
-                              .length > 0 && (
-                              <div className="mt-4">
+                            {explanation.top_negative_features.length > 0 && (
+                              <div className="mt-3">
                                 <p className="text-xs font-semibold text-red-700">
                                   Factors weighing against the prediction
                                 </p>
 
-                                {explanations[recommendation.symbol].top_negative_features.map(
+                                {explanation.top_negative_features.map(
                                   (feature) => (
                                     <div
                                       key={feature.feature_name}
-                                      className="mt-2 flex items-start justify-between gap-3"
+                                      className="mt-1.5 flex items-start justify-between gap-3 rounded px-1 py-0.5 transition-colors hover:bg-white"
                                     >
                                       <span className="text-xs text-gray-700">
                                         {formatFeatureName(feature.feature_name)}
                                       </span>
-                                      <span className="shrink-0 text-xs font-semibold text-red-700">
+                                      <span className="shrink-0 text-xs font-semibold tabular-nums text-red-700">
                                         {feature.shap_value.toFixed(4)}
                                       </span>
                                     </div>
@@ -1368,9 +1374,9 @@ export default function AIPicks() {
                               </div>
                             )}
 
-                            {explanations[recommendation.symbol].warning && (
-                              <p className="mt-3 text-xs leading-5 text-amber-700">
-                                {explanations[recommendation.symbol].warning}
+                            {explanation.warning && (
+                              <p className="mt-2.5 text-xs leading-5 text-amber-700">
+                                {explanation.warning}
                               </p>
                             )}
                           </>
@@ -1378,26 +1384,23 @@ export default function AIPicks() {
                       </div>
                     )}
                   </div>
-
-
-                  
-
                 </div>
+
                 {/* Card action */}
 
-                <div className="mt-auto border-t border-gray-100 bg-gray-50/70 p-5">
+                <div className="mt-auto border-t border-gray-100 bg-gray-50/70 p-3">
                   <button
                     onClick={() =>
                       handleOpenTrade(
                         recommendation
                       )
                     }
-                    className="w-full rounded-xl bg-[#0F4C3A] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0B3528]"
+                    className="w-full rounded-lg bg-[#0F4C3A] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B3528] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 active:scale-[0.98] motion-reduce:transform-none"
                   >
                     Paper Trade
                   </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
@@ -1405,12 +1408,16 @@ export default function AIPicks() {
         {/* Empty state */}
 
         {recommendations.length === 0 && (
-          <div className="mt-8 rounded-3xl border border-[#DCE9E2] bg-white p-10 text-center shadow-sm">
-            <p className="font-semibold text-[#0B3528]">
+          <div className="fg-fade-in mt-4 rounded-2xl border border-[#DCE9E2] bg-white px-6 py-10 text-center shadow-sm">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#E8F7EF] text-lg text-[#0F4C3A]">
+              ✦
+            </div>
+
+            <p className="mt-3 text-sm font-semibold text-[#0B3528]">
               No compatible AI picks found
             </p>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
               No stocks currently passed the configured risk
               compatibility rules.
             </p>
@@ -1419,8 +1426,8 @@ export default function AIPicks() {
 
         {/* Disclaimer */}
 
-        <div className="mt-8 pb-8 text-center">
-          <p className="text-xs leading-5 text-gray-400">
+        <div className="mt-5 pb-6 text-center">
+          <p className="text-[11px] leading-4 text-gray-400">
             AI Picks are machine-learning market signals for
             FinGrow&apos;s paper-trading environment. They are not
             guaranteed returns or financial advice.
@@ -1432,24 +1439,39 @@ export default function AIPicks() {
         ===================================================== */}
 
         {tradeStock && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+          <div
+            className="fg-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                handleCloseTrade();
+              }
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="trade-title"
+              className="fg-pop-in max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl"
+            >
               {/* Header */}
 
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                     Paper Trade
                   </p>
 
-                  <h2 className="mt-1 text-2xl font-bold text-[#0B3528]">
+                  <h2
+                    id="trade-title"
+                    className="mt-0.5 text-xl font-bold text-[#0B3528]"
+                  >
                     {tradeStock.symbol.replace(
                       ".NS",
                       ""
                     )}
                   </h2>
 
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="truncate text-xs text-gray-500">
                     {tradeStock.company_name}
                   </p>
                 </div>
@@ -1457,7 +1479,8 @@ export default function AIPicks() {
                 <button
                   onClick={handleCloseTrade}
                   disabled={tradeLoading}
-                  className="text-xl text-gray-400 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Close"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   ✕
                 </button>
@@ -1465,12 +1488,12 @@ export default function AIPicks() {
 
               {/* Current price */}
 
-              <div className="mt-6 rounded-2xl bg-[#F1F8F4] p-5">
+              <div className="mt-4 flex items-center justify-between rounded-xl bg-[#F1F8F4] px-4 py-3">
                 <p className="text-xs text-gray-500">
                   Current price
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-[#0F4C3A]">
+                <p className="text-xl font-bold text-[#0F4C3A]">
                   ₹
                   {tradePrice.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
@@ -1481,96 +1504,98 @@ export default function AIPicks() {
 
               {/* Trade Mode */}
 
-<div className="mt-5">
-  <p className="text-sm font-semibold text-[#0B3528]">
-    Buy by
-  </p>
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-[#0B3528]">
+                  Buy by
+                </p>
 
-  <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1">
-    {/* Invest by ₹ */}
+                <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
+                  {/* Invest by ₹ */}
 
-    <button
-      type="button"
-      onClick={() => {
-        if (tradeMode === "quantity") {
-          const quantity = Math.max(
-            1,
-            Math.floor(Number(tradeQuantity) || 1)
-          );
+                  <button
+                    type="button"
+                    aria-pressed={tradeMode === "amount"}
+                    onClick={() => {
+                      if (tradeMode === "quantity") {
+                        const quantity = Math.max(
+                          1,
+                          Math.floor(Number(tradeQuantity) || 1)
+                        );
 
-          const price = Number(
-            tradeStock?.current_price || 0
-          );
+                        const price = Number(
+                          tradeStock?.current_price || 0
+                        );
 
-          if (price > 0) {
-            setTradeAmount(
-              (quantity * price).toFixed(2)
-            );
-          }
-        }
+                        if (price > 0) {
+                          setTradeAmount(
+                            (quantity * price).toFixed(2)
+                          );
+                        }
+                      }
 
-        setTradeMode("amount");
-        setTradeError("");
-      }}
-      disabled={tradeLoading}
-      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-        tradeMode === "amount"
-          ? "bg-white text-[#0F4C3A] shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
-      }`}
-    >
-      Invest by ₹
-    </button>
+                      setTradeMode("amount");
+                      setTradeError("");
+                    }}
+                    disabled={tradeLoading}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                      tradeMode === "amount"
+                        ? "bg-white text-[#0F4C3A] shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Invest by ₹
+                  </button>
 
-    {/* Buy by shares */}
+                  {/* Buy by shares */}
 
-    <button
-      type="button"
-      onClick={() => {
-        if (tradeMode === "amount") {
-          const amount = Number(tradeAmount);
-          const price = Number(
-            tradeStock?.current_price || 0
-          );
+                  <button
+                    type="button"
+                    aria-pressed={tradeMode === "quantity"}
+                    onClick={() => {
+                      if (tradeMode === "amount") {
+                        const amount = Number(tradeAmount);
+                        const price = Number(
+                          tradeStock?.current_price || 0
+                        );
 
-          if (
-            Number.isFinite(amount) &&
-            amount > 0 &&
-            price > 0
-          ) {
-            const quantity = Math.floor(
-              amount / price
-            );
+                        if (
+                          Number.isFinite(amount) &&
+                          amount > 0 &&
+                          price > 0
+                        ) {
+                          const quantity = Math.floor(
+                            amount / price
+                          );
 
-            if (quantity >= 1) {
-              setTradeQuantity(quantity);
-            } else {
-              setTradeQuantity(1);
-            }
-          }
-        }
+                          if (quantity >= 1) {
+                            setTradeQuantity(quantity);
+                          } else {
+                            setTradeQuantity(1);
+                          }
+                        }
+                      }
 
-        setTradeMode("quantity");
-        setTradeError("");
-      }}
-      disabled={tradeLoading}
-      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-        tradeMode === "quantity"
-          ? "bg-white text-[#0F4C3A] shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
-      }`}
-    >
-      Buy by shares
-    </button>
-  </div>
-</div>
+                      setTradeMode("quantity");
+                      setTradeError("");
+                    }}
+                    disabled={tradeLoading}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                      tradeMode === "quantity"
+                        ? "bg-white text-[#0F4C3A] shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Buy by shares
+                  </button>
+                </div>
+              </div>
 
               {/* Input */}
 
-              <div className="mt-5">
+              <div className="mt-4">
                 <label
                   htmlFor="trade-input"
-                  className="text-sm font-semibold text-[#0B3528]"
+                  className="text-xs font-semibold text-[#0B3528]"
                 >
                   {tradeMode === "amount"
                     ? "How much do you want to invest?"
@@ -1578,7 +1603,7 @@ export default function AIPicks() {
                 </label>
 
                 {tradeMode === "amount" ? (
-                  <div className="mt-2 flex items-center rounded-xl border border-gray-200 px-4 focus-within:border-[#0F4C3A]">
+                  <div className="mt-1.5 flex items-center rounded-lg border border-gray-200 px-3 transition focus-within:border-[#0F4C3A] focus-within:ring-2 focus-within:ring-emerald-100">
                     <span className="text-sm font-semibold text-gray-500">
                       ₹
                     </span>
@@ -1598,7 +1623,7 @@ export default function AIPicks() {
                       }}
                       disabled={tradeLoading}
                       placeholder="Enter amount in ₹"
-                      className="w-full border-0 px-2 py-3 text-sm focus:outline-none"
+                      className="w-full border-0 bg-transparent px-2 py-2.5 text-sm focus:outline-none"
                     />
                   </div>
                 ) : (
@@ -1621,14 +1646,14 @@ export default function AIPicks() {
                     }}
                     disabled={tradeLoading}
                     placeholder="Enter number of shares"
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#0F4C3A] focus:outline-none disabled:bg-gray-100"
+                    className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm transition focus:border-[#0F4C3A] focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:bg-gray-100"
                   />
                 )}
               </div>
 
               {/* Review */}
 
-              <div className="mt-5 rounded-2xl border border-gray-100 p-5">
+              <div className="mt-4 space-y-2 rounded-xl border border-gray-100 p-3.5">
                 {/* Amount mode */}
 
                 {tradeMode === "amount" && (
@@ -1654,13 +1679,7 @@ export default function AIPicks() {
 
                 {/* Shares */}
 
-                <div
-                  className={`flex justify-between text-sm ${
-                    tradeMode === "amount"
-                      ? "mt-3"
-                      : ""
-                  }`}
-                >
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
                     Shares to buy
                   </span>
@@ -1672,7 +1691,7 @@ export default function AIPicks() {
 
                 {/* Actual investment */}
 
-                <div className="mt-3 flex justify-between text-sm">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
                     Amount actually invested
                   </span>
@@ -1693,7 +1712,7 @@ export default function AIPicks() {
 
                 {tradeMode === "amount" &&
                   calculatedQuantity > 0 && (
-                    <div className="mt-3 flex justify-between text-sm">
+                    <div className="flex justify-between text-sm">
                       <span className="text-gray-500">
                         Unused amount
                       </span>
@@ -1715,7 +1734,10 @@ export default function AIPicks() {
               {/* Error */}
 
               {tradeError && (
-                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <div
+                  role="alert"
+                  className="fg-fade-in mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
+                >
                   <p className="text-sm text-red-600">
                     {tradeError}
                   </p>
@@ -1724,11 +1746,11 @@ export default function AIPicks() {
 
               {/* Actions */}
 
-              <div className="mt-6 flex gap-3">
+              <div className="mt-5 flex gap-3">
                 <button
                   onClick={handleCloseTrade}
                   disabled={tradeLoading}
-                  className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
                 >
                   Cancel
                 </button>
@@ -1739,8 +1761,9 @@ export default function AIPicks() {
                     tradeLoading ||
                     calculatedQuantity < 1
                   }
-                  className="flex-1 rounded-xl bg-[#0F4C3A] px-4 py-3 text-sm font-semibold text-white hover:bg-[#0B3528] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#0F4C3A] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B3528] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none"
                 >
+                  {tradeLoading && <Spinner />}
                   {tradeLoading
                     ? "Processing..."
                     : calculatedQuantity >= 1
@@ -1758,6 +1781,6 @@ export default function AIPicks() {
           </div>
         )}
       </main>
-    </div>
+    </PageChrome>
   );
 }
