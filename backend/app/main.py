@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes.portfolio_routes import router as portfolio_router
 from app.routes import market_routes, auth_routes, recommendation_routes, learn_routes
 from app.ml.model_loader import model
+from app.services.ai_refresh_service import start_scheduler
 
 app = FastAPI()
 
@@ -18,6 +19,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event('startup')
+def start_daily_jobs():
+    start_scheduler()
+
 app.include_router(market_routes.router, prefix="/market")
 app.include_router(
     recommendation_routes.router,
@@ -48,5 +54,3 @@ app.include_router(
 @app.get("/")
 def home():
     return {"message": "FinGrow API running"}
-
-  
