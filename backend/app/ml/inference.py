@@ -104,7 +104,8 @@ def predict_probability(history_response: dict) -> float:
     if latest_features.empty:
         raise ValueError("Not enough valid data to calculate inference features.")
 
-    probability = model.predict_proba(latest_features)[0, 1]
+    positive_class_index = list(model.classes_).index(1)
+    probability = model.predict_proba(latest_features)[0, positive_class_index]
 
     return float(probability)
 

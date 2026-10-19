@@ -20,7 +20,7 @@ def _build_risk_system():
         np.arange(0, 101, 1), "volatility"
     )
     momentum = ctrl.Antecedent(
-        np.arange(-20, 21, 1), "momentum"
+        np.arange(-100, 101, 1), "momentum"
     )
     drawdown = ctrl.Antecedent(
         np.arange(0, 51, 1), "drawdown"
@@ -40,15 +40,17 @@ def _build_risk_system():
         volatility.universe, [60, 100, 100]
     )
 
-    # Momentum is a recent price return in percentage points.
-    momentum["negative"] = fuzz.trimf(
-        momentum.universe, [-20, -20, 0]
-    )
+    # Momentum i a recent price return in percentage points.
+    momentum["negative"] = fuzz.trapmf(
+    momentum.universe, [-100, -100, -20, 0]
+)
+
     momentum["neutral"] = fuzz.trimf(
-        momentum.universe, [-5, 0, 5]
+        momentum.universe, [-10, 0, 10]
     )
-    momentum["positive"] = fuzz.trimf(
-        momentum.universe, [0, 20, 20]
+
+    momentum["positive"] = fuzz.trapmf(
+        momentum.universe, [0, 20, 100, 100]
     )
 
     # Drawdown is the percentage decline from a recent price peak.
@@ -138,8 +140,10 @@ def assess_fuzzy_risk(
     if not 0 <= volatility_percentile <= 100:
         raise ValueError("volatility_percentile must be between 0 and 100")
 
-    if not -20 <= momentum_pct <= 20:
-        raise ValueError("momentum_pct must be between -20 and 20")
+    if not np.isfinite(momentum_pct) or not -100 <= momentum_pct <= 100:
+        raise ValueError(
+            f"momentum_pct must be between -100 and 100; got {momentum_pct}"
+    )
 
     if not 0 <= drawdown_pct <= 50:
         raise ValueError("drawdown_pct must be between 0 and 50")
