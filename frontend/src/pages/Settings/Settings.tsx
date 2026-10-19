@@ -14,8 +14,10 @@ import {
   FiChevronRight,
   FiEye,
   FiEyeOff,
+  FiMenu,
 } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
+import Sidebar from "../../components/Sidebar";
 
 type SettingsSection =
   | "profile"
@@ -100,6 +102,7 @@ const MOTION_CSS = `
 
 export default function Settings() {
   const navigate = useNavigate();
+const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("profile");
@@ -426,24 +429,37 @@ export default function Settings() {
     <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-800">
       <style>{MOTION_CSS}</style>
 
+
+<Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* =====================================================
           HEADER
       ===================================================== */}
 
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2"
-          aria-label="Go to dashboard"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
-            F
-          </div>
+<div className="flex items-center gap-2 md:gap-3">
+  <button
+    onClick={() => setSidebarOpen(true)}
+    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 active:scale-95 motion-reduce:transition-none outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]/40"
+    aria-label="Open menu"
+    title="Menu"
+  >
+    <FiMenu size={20} />
+  </button>
 
-          <span className="font-serif text-lg font-bold tracking-tight text-[#0F4C3A]">
-            FinGrow
-          </span>
-        </button>
+  <button
+    onClick={() => navigate("/dashboard")}
+    className="flex items-center gap-2"
+    aria-label="Go to dashboard"
+  >
+    <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
+      F
+    </div>
+
+    <span className="font-serif text-lg font-bold tracking-tight text-[#0F4C3A]">
+      FinGrow
+    </span>
+  </button>
+</div>
 
         <div className="flex items-center gap-3">
           <div className="hidden text-right leading-tight sm:block">
