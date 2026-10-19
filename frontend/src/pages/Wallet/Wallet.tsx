@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowRight, FiDownload, FiMenu, FiRefreshCw } from "react-icons/fi";
 import { MotionConfig, motion } from "framer-motion";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 import {
   getPortfolioSummary,
   addFunds,
@@ -371,16 +372,20 @@ export default function Wallet() {
               </button>
             </div>
 
-            <button
-              onClick={() => navigate("/portfolio")}
-              className={`group flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-[#0F4C3A] transition-colors hover:bg-slate-100 ${FOCUS}`}
-            >
-              Portfolio
-              <FiArrowRight
-                size={14}
-                className="transition-transform motion-safe:group-hover:translate-x-0.5"
-              />
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => navigate("/portfolio")}
+                className={`group hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-[#0F4C3A] transition-colors hover:bg-slate-100 sm:flex ${FOCUS}`}
+              >
+                Portfolio
+                <FiArrowRight
+                  size={14}
+                  className="transition-transform motion-safe:group-hover:translate-x-0.5"
+                />
+              </button>
+
+              <HeaderActions balance={summary ? summary.available_balance : null} />
+            </div>
           </div>
         </header>
 
@@ -494,10 +499,10 @@ export default function Wallet() {
                     </dt>
                     <dd
                       className={`mt-0.5 text-base font-semibold tabular-nums sm:text-lg ${returnPercent == null
-                          ? ""
-                          : returnPercent >= 0
-                            ? "text-emerald-600"
-                            : "text-red-600"
+                        ? ""
+                        : returnPercent >= 0
+                          ? "text-emerald-600"
+                          : "text-red-600"
                         }`}
                     >
                       {returnPercent == null
@@ -535,8 +540,8 @@ export default function Wallet() {
                         disabled={adding}
                         aria-pressed={selected}
                         className={`rounded-lg border px-1 py-2 text-sm font-semibold tabular-nums transition-colors motion-safe:active:scale-[0.97] disabled:opacity-50 ${FOCUS} ${selected
-                            ? "border-[#0F4C3A] bg-[#F1F8F4] text-[#0F4C3A]"
-                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          ? "border-[#0F4C3A] bg-[#F1F8F4] text-[#0F4C3A]"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
                           }`}
                       >
                         ₹{value.toLocaleString("en-IN")}
@@ -651,8 +656,8 @@ export default function Wallet() {
                         aria-selected={filter === item.key}
                         onClick={() => setFilter(item.key)}
                         className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${FOCUS} ${filter === item.key
-                            ? "bg-white text-[#0F4C3A] shadow-sm"
-                            : "text-slate-500 hover:text-slate-700"
+                          ? "bg-white text-[#0F4C3A] shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
                           }`}
                       >
                         {item.label}
@@ -771,8 +776,8 @@ export default function Wallet() {
                                   <div className="shrink-0 text-right">
                                     <p
                                       className={`text-sm font-semibold tabular-nums ${style.sign === "+"
-                                          ? "text-emerald-600"
-                                          : "text-slate-800"
+                                        ? "text-emerald-600"
+                                        : "text-slate-800"
                                         }`}
                                     >
                                       {style.sign}
@@ -814,8 +819,8 @@ export default function Wallet() {
 
                                   <p
                                     className={`text-right text-sm font-semibold tabular-nums ${style.sign === "+"
-                                        ? "text-emerald-600"
-                                        : "text-slate-800"
+                                      ? "text-emerald-600"
+                                      : "text-slate-800"
                                       }`}
                                   >
                                     {style.sign}

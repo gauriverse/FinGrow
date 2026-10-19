@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 
 type SettingsSection =
   | "profile"
@@ -460,27 +461,8 @@ const [sidebarOpen, setSidebarOpen] = useState(false);
     </span>
   </button>
 </div>
-
-        <div className="flex items-center gap-3">
-          <div className="hidden text-right leading-tight sm:block">
-            <p className="text-sm font-semibold text-slate-800">
-              {profile.full_name || "User"}
-            </p>
-            <p className="text-xs text-slate-400">{email}</p>
-          </div>
-
-          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A]">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={profile.full_name || "Profile"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              getInitials()
-            )}
-          </div>
-        </div>
+<HeaderActions />
+       
       </header>
 
       {/* =====================================================

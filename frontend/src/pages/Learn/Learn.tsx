@@ -15,6 +15,7 @@ import {
   getLearningProgress,
 } from "../../services/learnService";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 
 type Lesson = {
   id: string;
@@ -222,28 +223,33 @@ export default function Learn() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
  <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
-<div className="flex items-center gap-2 mb-2">
-  <button
-    onClick={() => setSidebarOpen(true)}
-    className={`flex h-9 w-9 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-gray-100 ${FOCUS_RING}`}
-    aria-label="Open menu"
-    title="Menu"
-  >
-    <Menu size={20} />
-  </button>
+   <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-sm md:px-6">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-gray-100 ${FOCUS_RING}`}
+            aria-label="Open menu"
+            title="Menu"
+          >
+            <Menu size={20} />
+          </button>
 
-  <button
-    onClick={() => navigate("/dashboard")}
-    className="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]/40"
-  >
-    <ArrowLeft
-      size={16}
-      className="transition-transform motion-safe:group-hover:-translate-x-0.5"
-    />
-    <span>Dashboard</span>
-  </button>
-</div>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C3A]/40"
+          >
+            <ArrowLeft
+              size={16}
+              className="transition-transform motion-safe:group-hover:-translate-x-0.5"
+            />
+            <span>Dashboard</span>
+          </button>
+        </div>
+
+        <HeaderActions />
+      </header>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+
 
         {/* ================================================= */}
         {/* HEADER */}
@@ -441,7 +447,7 @@ export default function Learn() {
         {/* ================================================= */}
 
         {!isFiltering && (
-          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm py-2.5 mb-5 border-b border-gray-100">
+          <div className="sticky top-14 z-20 bg-white/95 backdrop-blur-sm py-2.5 mb-5 border-b border-gray-100">
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
 

@@ -7,6 +7,7 @@ import {
   removeFromWatchlist,
 } from "../../services/watchlist";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 interface StockRelation {
   id: string;
   symbol: string;
@@ -397,7 +398,7 @@ export default function Watchlist() {
     <div className="min-h-screen bg-[#FAF9F5] font-sans">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Top bar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 md:px-8 h-14 flex items-center">
+     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 md:px-8 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -418,6 +419,7 @@ export default function Watchlist() {
             Dashboard
           </button>
         </div>
+        <HeaderActions />
       </header>
 
       <main className="px-4 md:px-8 py-5 max-w-7xl mx-auto">
