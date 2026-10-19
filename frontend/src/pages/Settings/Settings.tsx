@@ -12,6 +12,8 @@ import {
   FiCheck,
   FiAlertCircle,
   FiChevronRight,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 
@@ -84,6 +86,17 @@ const horizonOptions = [
   { value: "5-10y", label: "5–10 years" },
   { value: "10y-plus", label: "10+ years" },
 ];
+
+// UI only: lightweight keyframes, all disabled for reduced-motion users.
+const MOTION_CSS = `
+@keyframes fg-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fg-rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+.fg-fade-in { animation: fg-fade-in .15s ease-out both }
+.fg-rise { animation: fg-rise .2s ease-out both }
+@media (prefers-reduced-motion: reduce) {
+  .fg-fade-in, .fg-rise { animation: none }
+}
+`;
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -373,51 +386,79 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-[#0F4C3A]/20 border-t-[#0F4C3A] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-sm text-slate-500">
-            Loading your settings...
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#FAF9F5] font-sans">
+        <style>{MOTION_CSS}</style>
+
+        <div className="h-14 border-b border-slate-200 bg-white" />
+
+        <main
+          className="mx-auto max-w-7xl px-4 py-5 md:px-6"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Loading your settings...</span>
+
+          <div className="h-3 w-16 animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
+          <div className="mt-2 h-7 w-32 animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
+          <div className="mt-2 h-4 w-72 max-w-full animate-pulse rounded bg-gray-200 motion-reduce:animate-none" />
+
+          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[200px_1fr]">
+            <div className="h-12 animate-pulse rounded-xl border border-slate-200 bg-white motion-reduce:animate-none lg:h-64" />
+
+            <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 motion-reduce:animate-none">
+              <div className="h-5 w-32 rounded bg-gray-200" />
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((item) => (
+                  <div key={item}>
+                    <div className="h-3 w-20 rounded bg-gray-200" />
+                    <div className="mt-2 h-9 rounded-lg bg-gray-100" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-800">
+      <style>{MOTION_CSS}</style>
+
       {/* =====================================================
           HEADER
       ===================================================== */}
 
-      <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-10">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
         <button
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2"
+          aria-label="Go to dashboard"
         >
-          <div className="w-8 h-8 rounded bg-[#0F4C3A] flex items-center justify-center text-white font-bold text-lg font-serif">
+          <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
             F
           </div>
 
-          <span className="font-bold text-xl tracking-tight font-serif text-[#0F4C3A]">
+          <span className="font-serif text-lg font-bold tracking-tight text-[#0F4C3A]">
             FinGrow
           </span>
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:block text-right">
+          <div className="hidden text-right leading-tight sm:block">
             <p className="text-sm font-semibold text-slate-800">
               {profile.full_name || "User"}
             </p>
             <p className="text-xs text-slate-400">{email}</p>
           </div>
 
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A]">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={profile.full_name || "Profile"}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
               getInitials()
@@ -430,17 +471,17 @@ export default function Settings() {
           PAGE
       ===================================================== */}
 
-      <main className="max-w-7xl mx-auto px-5 md:px-8 py-8">
-        <div className="mb-8">
-          <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-slate-400">
+      <main className="mx-auto max-w-7xl px-4 py-5 md:px-6">
+        <div className="mb-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
             Account
           </p>
 
-          <h1 className="font-serif text-3xl md:text-4xl font-semibold text-[#0B3528] mt-1">
+          <h1 className="mt-0.5 font-serif text-2xl font-semibold text-[#0B3528]">
             Settings
           </h1>
 
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="mt-1 text-sm text-slate-500">
             Manage your FinGrow account and investment preferences.
           </p>
         </div>
@@ -450,25 +491,34 @@ export default function Settings() {
         ===================================================== */}
 
         {message && (
-          <div className="mb-5 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            <FiCheck />
+          <div
+            role="status"
+            className="fg-fade-in mb-4 flex items-center gap-2.5 rounded-lg border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700"
+          >
+            <FiCheck className="shrink-0" />
             {message}
           </div>
         )}
 
         {error && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div
+            role="alert"
+            className="fg-fade-in mb-4 flex items-start gap-2.5 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
+          >
             <FiAlertCircle className="mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[210px_1fr]">
           {/* =====================================================
               SETTINGS NAVIGATION
           ===================================================== */}
 
-          <aside className="bg-white border border-slate-200 rounded-2xl p-3 h-fit">
+          <aside
+            aria-label="Settings sections"
+            className="flex h-fit gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 lg:sticky lg:top-[4.5rem] lg:block lg:overflow-visible"
+          >
             <SettingsNavItem
               icon={<FiUser />}
               label="Profile"
@@ -490,9 +540,9 @@ export default function Settings() {
               onClick={() => handleSectionChange("security")}
             />
 
-            <div className="my-3 border-t border-slate-100" />
+            <div className="my-2 hidden border-t border-slate-100 lg:block" />
 
-            <p className="px-3 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <p className="hidden px-3 pb-1.5 pt-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 lg:block">
               Preferences
             </p>
 
@@ -510,13 +560,13 @@ export default function Settings() {
               onClick={() => handleSectionChange("appearance")}
             />
 
-            <div className="my-3 border-t border-slate-100" />
+            <div className="my-2 hidden border-t border-slate-100 lg:block" />
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition"
+              className="flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 active:scale-[0.98] motion-reduce:transform-none lg:w-full"
             >
-              <FiLogOut size={17} />
+              <FiLogOut size={16} />
               Sign out
             </button>
           </aside>
@@ -525,24 +575,24 @@ export default function Settings() {
               CONTENT
           ===================================================== */}
 
-          <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             {/* PROFILE */}
             {activeSection === "profile" && (
-              <div>
+              <div className="fg-fade-in">
                 <SectionHeader
                   title="Profile"
                   description="Update your personal information."
                 />
 
-                <div className="p-6 md:p-8">
+                <div className="p-4 md:p-6">
                   {/* Avatar */}
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center text-xl font-bold text-[#0F4C3A]">
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-lg font-bold text-[#0F4C3A]">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
                           alt={profile.full_name || "Profile"}
-                          className="w-full h-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         getInitials()
@@ -550,17 +600,17 @@ export default function Settings() {
                     </div>
 
                     <div>
-                      <h3 className="font-semibold text-slate-900">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {profile.full_name || "Your profile"}
                       </h3>
 
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="mt-0.5 text-xs text-slate-400">
                         Your FinGrow account
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <InputField
                       label="Full Name"
                       value={profile.full_name}
@@ -568,21 +618,21 @@ export default function Settings() {
                       placeholder="Your full name"
                     />
 
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
                         Email
-                      </label>
+                      </span>
 
                       <input
                         value={email}
                         disabled
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-400 cursor-not-allowed"
+                        className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400"
                       />
 
-                      <p className="text-[11px] text-slate-400 mt-2">
+                      <span className="mt-1.5 block text-[11px] text-slate-400">
                         Email is managed by your authentication provider.
-                      </p>
-                    </div>
+                      </span>
+                    </label>
 
                     <InputField
                       label="Age"
@@ -626,14 +676,14 @@ export default function Settings() {
 
             {/* INVESTMENT */}
             {activeSection === "investment" && (
-              <div>
+              <div className="fg-fade-in">
                 <SectionHeader
                   title="Investment Profile"
                   description="These preferences help FinGrow personalize your investment guidance."
                 />
 
-                <div className="p-6 md:p-8 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-4 p-4 md:p-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <SelectField
                       label="Investment Goal"
                       value={profile.investment_goal}
@@ -673,16 +723,16 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="rounded-xl bg-[#F7F8F5] border border-slate-100 p-4">
+                  <div className="rounded-lg border border-slate-100 bg-[#F7F8F5] px-3.5 py-3">
                     <div className="flex gap-3">
-                      <FiTarget className="text-[#0F4C3A] mt-0.5 shrink-0" />
+                      <FiTarget className="mt-0.5 shrink-0 text-[#0F4C3A]" />
 
                       <div>
                         <p className="text-sm font-semibold text-slate-800">
                           Your profile powers personalization
                         </p>
 
-                        <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
                           FinGrow uses your investment goal, risk level,
                           experience and horizon to make its guidance more
                           relevant to you.
@@ -702,23 +752,23 @@ export default function Settings() {
 
             {/* SECURITY */}
             {activeSection === "security" && (
-              <div>
+              <div className="fg-fade-in">
                 <SectionHeader
                   title="Security"
                   description="Keep your FinGrow account secure."
                 />
 
-                <div className="p-6 md:p-8">
-                  <div className="max-w-xl">
+                <div className="p-4 md:p-6">
+                  <div className="max-w-2xl">
                     <h3 className="text-sm font-semibold text-slate-900">
                       Change password
                     </h3>
 
-                    <p className="text-xs text-slate-400 mt-1 mb-5">
+                    <p className="mb-4 mt-0.5 text-xs text-slate-400">
                       Choose a strong password that you don't use elsewhere.
                     </p>
 
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <PasswordField
                         label="New Password"
                         value={newPassword}
@@ -739,52 +789,60 @@ export default function Settings() {
                       disabled={
                         passwordSaving || !newPassword || !confirmPassword
                       }
-                      className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C3A] text-white text-sm font-semibold hover:bg-[#0B3528] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0F4C3A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0B3528] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
                     >
-                      <FiShield size={15} />
+                      {passwordSaving ? (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:animate-none" />
+                      ) : (
+                        <FiShield size={15} />
+                      )}
                       {passwordSaving ? "Updating..." : "Update Password"}
                     </button>
                   </div>
 
-                  <div className="border-t border-slate-100 my-8" />
+                  <div className="my-5 border-t border-slate-100" />
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      Sign out
-                    </h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        Sign out
+                      </h3>
 
-                    <p className="text-xs text-slate-400 mt-1 mb-4">
-                      Sign out of your FinGrow account on this device.
-                    </p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Sign out of your FinGrow account on this device.
+                      </p>
+                    </div>
 
                     <button
                       onClick={handleLogout}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] motion-reduce:transform-none"
                     >
                       <FiLogOut size={15} />
                       Sign out
                     </button>
                   </div>
 
-                  <div className="border-t border-red-100 my-8" />
+                  <div className="my-5 border-t border-red-100" />
 
-                  <div className="rounded-xl border border-red-100 bg-red-50/50 p-5">
+                  <div className="rounded-lg border border-red-100 bg-red-50/50 p-4">
                     <div className="flex gap-3">
-                      <FiTrash2 className="text-red-500 mt-0.5 shrink-0" />
+                      <FiTrash2 className="mt-0.5 shrink-0 text-red-500" />
 
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-red-700">
-                          Delete account
-                        </h3>
+                      <div className="flex flex-1 flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 max-w-md">
+                          <h3 className="text-sm font-semibold text-red-700">
+                            Delete account
+                          </h3>
 
-                        <p className="text-xs text-red-600/70 mt-1 leading-relaxed">
-                          Permanently delete your FinGrow account and associated
-                          data. This action cannot be undone.
-                        </p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-red-600/70">
+                            Permanently delete your FinGrow account and
+                            associated data. This action cannot be undone.
+                          </p>
+                        </div>
 
                         <button
                           onClick={handleDeleteAccount}
-                          className="mt-4 px-4 py-2 rounded-lg border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+                          className="rounded-lg border border-red-200 px-3.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 active:scale-[0.98] motion-reduce:transform-none"
                         >
                           Delete Account
                         </button>
@@ -797,13 +855,13 @@ export default function Settings() {
 
             {/* NOTIFICATIONS */}
             {activeSection === "notifications" && (
-              <div>
+              <div className="fg-fade-in">
                 <SectionHeader
                   title="Notifications"
                   description="Choose what updates you'd like to receive."
                 />
 
-                <div className="p-6 md:p-8">
+                <div className="p-4 md:p-6">
                   <PreferenceRow
                     title="Email notifications"
                     description="Receive important account and platform updates."
@@ -825,7 +883,7 @@ export default function Settings() {
                     onToggle={() => setAiRecommendations((prev) => !prev)}
                   />
 
-                  <div className="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-400">
+                  <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 px-3.5 py-3 text-xs text-slate-400">
                     Notification preferences are currently stored locally in
                     this interface. Persistent notification settings can be
                     connected to Supabase when the notification system is
@@ -837,13 +895,13 @@ export default function Settings() {
 
             {/* APPEARANCE */}
             {activeSection === "appearance" && (
-              <div>
+              <div className="fg-fade-in">
                 <SectionHeader
                   title="Appearance"
                   description="Customize how FinGrow looks on your device."
                 />
 
-                <div className="p-6 md:p-8">
+                <div className="p-4 md:p-6">
                   <PreferenceRow
                     title="Dark mode"
                     description="Use a darker interface that's easier on the eyes in low-light environments."
@@ -852,7 +910,7 @@ export default function Settings() {
                   />
 
                   {darkMode && (
-                    <div className="mt-4 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
+                    <div className="fg-fade-in mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700">
                       Dark mode preference is currently a UI preview. A full
                       application-wide theme can be connected once FinGrow has a
                       global theme provider.
@@ -886,7 +944,8 @@ function SettingsNavItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+      aria-current={active ? "page" : undefined}
+      className={`flex shrink-0 items-center justify-between gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition active:scale-[0.98] motion-reduce:transform-none lg:w-full ${
         active
           ? "bg-[#0F4C3A] text-white"
           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -897,7 +956,7 @@ function SettingsNavItem({
         {label}
       </span>
 
-      {active && <FiChevronRight size={14} />}
+      {active && <FiChevronRight size={14} className="hidden lg:block" />}
     </button>
   );
 }
@@ -910,12 +969,12 @@ function SectionHeader({
   description: string;
 }) {
   return (
-    <div className="px-6 md:px-8 py-6 border-b border-slate-100">
-      <h2 className="font-serif text-xl font-semibold text-slate-900">
+    <div className="border-b border-slate-100 px-4 py-4 md:px-6">
+      <h2 className="font-serif text-lg font-semibold text-slate-900">
         {title}
       </h2>
 
-      <p className="text-sm text-slate-400 mt-1">{description}</p>
+      <p className="mt-0.5 text-sm text-slate-400">{description}</p>
     </div>
   );
 }
@@ -940,14 +999,14 @@ function InputField({
   prefix?: string;
 }) {
   return (
-    <div>
-      <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
         {label}
-      </label>
+      </span>
 
       <div className="relative">
         {prefix && (
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
             {prefix}
           </span>
         )}
@@ -959,12 +1018,12 @@ function InputField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10 ${
-            prefix ? "pl-9" : ""
+          className={`w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10 ${
+            prefix ? "pl-7" : ""
           }`}
         />
       </div>
-    </div>
+    </label>
   );
 }
 
@@ -982,15 +1041,15 @@ function SelectField({
   placeholder: string;
 }) {
   return (
-    <div>
-      <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
         {label}
-      </label>
+      </span>
 
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
+        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
       >
         <option value="">{placeholder}</option>
 
@@ -1000,7 +1059,7 @@ function SelectField({
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }
 
@@ -1015,20 +1074,34 @@ function PasswordField({
   onChange: (value: string) => void;
   placeholder: string;
 }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">
-        {label}
-      </label>
+  // UI only: local show/hide toggle, does not touch the password value.
+  const [visible, setVisible] = useState(false);
 
-      <input
-        type="password"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
-      />
-    </div>
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
+
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-10 text-sm text-slate-800 outline-none transition focus:border-[#0F4C3A] focus:ring-2 focus:ring-[#0F4C3A]/10"
+        />
+
+        <button
+          type="button"
+          onClick={() => setVisible((prev) => !prev)}
+          aria-label={visible ? "Hide password" : "Show password"}
+          className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+        >
+          {visible ? <FiEyeOff size={15} /> : <FiEye size={15} />}
+        </button>
+      </div>
+    </label>
   );
 }
 
@@ -1042,19 +1115,25 @@ function SaveBar({
   onSave: () => void;
 }) {
   return (
-    <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-      <p className="text-xs text-slate-400">
+    <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      <p className="flex items-center gap-2 text-xs text-slate-400">
+        <span
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-full ${
+            disabled ? "bg-emerald-400" : "bg-amber-400"
+          }`}
+        />
         {disabled ? "All changes are saved." : "You have unsaved changes."}
       </p>
 
       <button
         onClick={onSave}
         disabled={disabled || loading}
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C3A] text-white text-sm font-semibold hover:bg-[#0B3528] disabled:opacity-40 disabled:cursor-not-allowed transition"
+        className="inline-flex items-center gap-2 rounded-lg bg-[#0F4C3A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0B3528] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transform-none"
       >
         {loading ? (
           <>
-            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:animate-none" />
             Saving...
           </>
         ) : (
@@ -1080,24 +1159,26 @@ function PreferenceRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-5 border-b border-slate-100 last:border-b-0">
+    <div className="flex items-center justify-between gap-6 border-b border-slate-100 py-3.5 last:border-b-0">
       <div>
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
 
-        <p className="text-xs text-slate-400 mt-1 max-w-xl">{description}</p>
+        <p className="mt-0.5 max-w-xl text-xs text-slate-400">{description}</p>
       </div>
 
       <button
         type="button"
+        role="switch"
+        aria-checked={enabled}
         onClick={onToggle}
         aria-label={`${title}: ${enabled ? "on" : "off"}`}
-        className={`relative shrink-0 w-11 h-6 rounded-full transition ${
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 motion-reduce:transition-none ${
           enabled ? "bg-[#0F4C3A]" : "bg-slate-300"
         }`}
       >
         <span
-          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition ${
-            enabled ? "left-6" : "left-1"
+          className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 motion-reduce:transition-none ${
+            enabled ? "translate-x-5" : "translate-x-0"
           }`}
         />
       </button>
