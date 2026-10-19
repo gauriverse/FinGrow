@@ -167,3 +167,54 @@ export async function getWalletHistory() {
 
   return response.json();
 }
+
+
+async function authedGet(path: string, failureMessage: string) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+ 
+  if (error) {
+    throw error;
+  }
+ 
+  if (!session?.access_token) {
+    throw new Error("User is not authenticated");
+  }
+ 
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+ 
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || failureMessage);
+  }
+ 
+  return response.json();
+}
+ 
+export function getPortfolioHistory(days = 365) {
+  return authedGet(
+    `/portfolio/history?days=${days}`,
+    "Failed to load portfolio history"
+  );
+}
+ 
+export function getPortfolioInsights() {
+  return authedGet(
+    "/portfolio/insights",
+    "Failed to load portfolio insights"
+  );
+}
+ 
+export function getPortfolioTrades() {
+  return authedGet(
+    "/portfolio/trades",
+    "Failed to load trade history"
+  );
+}

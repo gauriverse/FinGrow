@@ -5,6 +5,19 @@ from app.supabase import admin_supabase
 from app.auth import get_current_user
 from app.services.yahoo_service import get_stock_data, get_last_two_closes
 
+import time
+from datetime import date, datetime, timedelta
+ 
+from app.services.portfolio_analytics import (
+    IST,
+    build_portfolio_history,
+    compute_realized_pnl,
+    day_change,
+    normalize_trades,
+    sector_breakdown,
+    today_ist,
+)
+
 router = APIRouter()
 class BuyRequest(BaseModel):
     stock_id: str
@@ -399,3 +412,311 @@ def wallet_history(current_user=Depends(get_current_user)):
     except Exception as e:
         print("WALLET HISTORY ERROR:", repr(e))
         raise HTTPException(status_code=500, detail="Could not load wallet activity")
+
+BENCHMARK_SYMBOL = "^NSEI"
+BENCHMARK_NAME = "NIFTY 50"
+_BENCHMARK_CACHE: dict = {}
+ 
+ 
+def _fetch_all(build_query, page_size: int = 1000):
+    """Supabase returns at most 1000 rows per request, so page through."""
+    rows = []
+    start = 0
+ 
+    while True:
+        batch = (
+            build_query().range(start, start + page_size - 1).execute().data or []
+        )
+        rows.extend(batch)
+ 
+        if len(batch) < page_size:
+            break
+ 
+        start += page_size
+ 
+    return rows
+ 
+ 
+def _benchmark_closes(start: date, end: date):
+    """NIFTY 50 daily closes, cached 10 minutes. Returns None if unavailable."""
+    key = (start.isoformat(), end.isoformat())
+    hit = _BENCHMARK_CACHE.get(key)
+ 
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+ 
+    try:
+        import yfinance as yf
+ 
+        frame = yf.Ticker(BENCHMARK_SYMBOL).history(
+            start=start.isoformat(),
+            end=(end + timedelta(days=1)).isoformat(),
+            auto_adjust=False,
+        )
+ 
+        if frame is None or frame.empty:
+            raise ValueError("empty benchmark data")
+ 
+        rows = [
+            {"date": ts.date().isoformat(), "close": round(float(value), 2)}
+            for ts, value in frame["Close"].dropna().items()
+        ]
+    except Exception as e:
+        print("BENCHMARK ERROR:", repr(e))
+        rows = None
+ 
+    _BENCHMARK_CACHE[key] = (time.time(), rows)
+    return rows
+ 
+ 
+@router.get("/history")
+def portfolio_history(
+    days: int = 365,
+    current_user=Depends(get_current_user)
+):
+    """Holdings value, invested amount and time-weighted return over time."""
+    try:
+        user_id = str(current_user.id)
+        days = max(7, min(int(days), 730))
+        today = today_ist()
+        window_start = today - timedelta(days=days)
+ 
+        trades = normalize_trades(
+            _fetch_all(
+                lambda: admin_supabase.table("transactions")
+                .select("id, stock_id, transaction_type, quantity, price, transaction_date")
+                .eq("user_id", user_id)
+                .order("transaction_date")
+            )
+        )
+ 
+        empty = {"series": [], "benchmark": None, "benchmark_name": BENCHMARK_NAME}
+ 
+        if not trades:
+            return empty
+ 
+        stock_ids = sorted({t["stock_id"] for t in trades})
+        seed_from = (window_start - timedelta(days=10)).isoformat()
+ 
+        price_rows = _fetch_all(
+            lambda: admin_supabase.table("stock_prices")
+            .select("stock_id, price_date, close_price")
+            .in_("stock_id", stock_ids)
+            .gte("price_date", seed_from)
+            .order("price_date")
+            .order("stock_id")
+        )
+ 
+        price_series: dict = {}
+        for row in price_rows:
+            if row.get("close_price") is None:
+                continue
+            price_series.setdefault(str(row["stock_id"]), []).append(
+                (date.fromisoformat(str(row["price_date"])[:10]), float(row["close_price"]))
+            )
+ 
+        live_rows = (
+            admin_supabase.table("stocks")
+            .select("id, symbol, current_price")
+            .in_("id", stock_ids)
+            .execute()
+            .data
+            or []
+        )
+        live_prices = {
+            str(r["id"]): float(r["current_price"] or 0) for r in live_rows
+        }
+ 
+        series = build_portfolio_history(
+            trades, price_series, live_prices, today, window_start
+        )
+ 
+        # Stocks you still hold whose daily price rows are missing or
+        # lag behind the rest. The chart is approximate for these.
+        net: dict = {}
+        for t in trades:
+            net[t["stock_id"]] = net.get(t["stock_id"], 0.0) + (
+                t["qty"] if t["side"] == "buy" else -t["qty"]
+            )
+ 
+        latest_price_date = max(
+            (d for s in price_series.values() for d, _ in s), default=None
+        )
+        symbol_by_id = {str(r["id"]): (r.get("symbol") or "") for r in live_rows}
+        incomplete = []
+ 
+        if latest_price_date:
+            for sid, qty in net.items():
+                if qty <= 1e-9:
+                    continue
+                rows_for_stock = price_series.get(sid)
+                last_date = rows_for_stock[-1][0] if rows_for_stock else None
+                if last_date is None or (latest_price_date - last_date).days > 3:
+                    incomplete.append(symbol_by_id.get(sid, "").replace(".NS", ""))
+ 
+        incomplete = sorted({name for name in incomplete if name})
+ 
+        benchmark = None
+        if len(series) >= 2:
+            benchmark = _benchmark_closes(
+                date.fromisoformat(series[0]["date"]), today
+            )
+ 
+        return {
+            "series": series,
+            "benchmark": benchmark,
+            "benchmark_name": BENCHMARK_NAME,
+            "incomplete_symbols": incomplete,
+        }
+ 
+    except Exception as e:
+        import traceback
+ 
+        print("========== PORTFOLIO HISTORY ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not load portfolio history")
+ 
+ 
+@router.get("/insights")
+def portfolio_insights(current_user=Depends(get_current_user)):
+    """Per-holding day change + sector allocation."""
+    try:
+        user_id = str(current_user.id)
+ 
+        holdings = (
+            admin_supabase.table("portfolio")
+            .select("stock_id, quantity")
+            .eq("user_id", user_id)
+            .execute()
+            .data
+            or []
+        )
+ 
+        stock_ids = sorted({h["stock_id"] for h in holdings})
+ 
+        if not stock_ids:
+            return {"holdings": [], "sectors": []}
+ 
+        stocks = {
+            s["id"]: s
+            for s in (
+                admin_supabase.table("stocks")
+                .select("id, symbol, company_name, sector, current_price")
+                .in_("id", stock_ids)
+                .execute()
+                .data
+                or []
+            )
+        }
+ 
+        symbols = [s["symbol"] for s in stocks.values() if s.get("symbol")]
+ 
+        try:
+            closes = get_last_two_closes(symbols)
+        except Exception as e:
+            print("Could not fetch previous closes:", repr(e))
+            closes = {}
+ 
+        quantity_by_stock: dict = {}
+        for h in holdings:
+            quantity_by_stock[h["stock_id"]] = quantity_by_stock.get(
+                h["stock_id"], 0
+            ) + int(h.get("quantity") or 0)
+ 
+        items = []
+        sector_items = []
+ 
+        for stock_id, quantity in quantity_by_stock.items():
+            stock = stocks.get(stock_id)
+            if not stock:
+                continue
+ 
+            price = float(stock.get("current_price") or 0)
+            previous_close = None
+ 
+            if stock.get("symbol") in closes:
+                # Same unpacking as /summary uses for today's P&L.
+                _, previous_close = closes[stock["symbol"]]
+ 
+            change, change_pct = day_change(price, previous_close)
+ 
+            items.append({
+                "stock_id": stock_id,
+                "symbol": stock.get("symbol"),
+                "company_name": stock.get("company_name"),
+                "sector": (stock.get("sector") or "").strip() or "Unclassified",
+                "day_change": change,
+                "day_change_percent": change_pct,
+                "day_pnl": round(quantity * change, 2) if change is not None else None,
+            })
+ 
+            sector_items.append({
+                "sector": stock.get("sector"),
+                "current_value": quantity * price,
+            })
+ 
+        return {"holdings": items, "sectors": sector_breakdown(sector_items)}
+ 
+    except Exception as e:
+        import traceback
+ 
+        print("========== PORTFOLIO INSIGHTS ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not load portfolio insights")
+ 
+ 
+@router.get("/trades")
+def portfolio_trades(
+    limit: int = 100,
+    current_user=Depends(get_current_user)
+):
+    """Order history with realized P&L on sells (average-cost method)."""
+    try:
+        user_id = str(current_user.id)
+        limit = max(1, min(int(limit), 500))
+ 
+        trades = normalize_trades(
+            _fetch_all(
+                lambda: admin_supabase.table("transactions")
+                .select(
+                    "id, stock_id, transaction_type, quantity, price, "
+                    "transaction_date, stocks(symbol, company_name)"
+                )
+                .eq("user_id", user_id)
+                .order("transaction_date")
+            )
+        )
+ 
+        realized = compute_realized_pnl(trades)
+ 
+        items = [
+            {
+                "id": t["id"],
+                "side": t["side"],
+                "symbol": t["symbol"],
+                "company_name": t["company_name"],
+                "quantity": t["qty"],
+                "price": round(t["price"], 2),
+                "amount": round(t["qty"] * t["price"], 2),
+                "date": t["ts"].isoformat(),
+                "realized_pnl": realized.get(t["id"]),
+            }
+            for t in reversed(trades)
+        ]
+ 
+        return {
+            "trades": items[:limit],
+            "realized_pnl_total": round(
+                sum(v for v in realized.values() if v is not None), 2
+            ),
+        }
+ 
+    except Exception as e:
+        import traceback
+ 
+        print("========== PORTFOLIO TRADES ERROR ==========")
+        print(repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Could not load trade history")
