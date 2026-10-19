@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,16 @@ from app.routes import market_routes, auth_routes, recommendation_routes, learn_
 from app.ml.model_loader import model
 from app.services.ai_refresh_service import start_scheduler
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = start_scheduler()
+    print('FinGrow daily job scheduled for 16:30 IST, Mon-Fri')
+    yield
+    scheduler.shutdown(wait=False)
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,10 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event('startup')
-def start_daily_jobs():
-    start_scheduler()
-
 app.include_router(market_routes.router, prefix="/market")
 app.include_router(
     recommendation_routes.router,
@@ -31,12 +37,10 @@ app.include_router(
     tags=["Recommendations"]
 )
 
-
 app.include_router(
     portfolio_router,
     prefix="/portfolio"
 )
-
 
 app.include_router(
     auth_routes.router,
