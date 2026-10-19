@@ -249,6 +249,7 @@ export default function AIPicks() {
 
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState("");
+  const [tradeSuccess, setTradeSuccess] = useState("");
 
   // =====================================================
   // AI RECOMMENDATION STATE
@@ -492,6 +493,7 @@ export default function AIPicks() {
     recommendation: Recommendation
   ) => {
     setTradeStock(recommendation);
+    setTradeSuccess("");
 
     // Default values
     setTradeQuantity(1);
@@ -543,7 +545,7 @@ export default function AIPicks() {
   }, [tradeStock, tradeLoading]);
 
   const handleConfirmBuy = async () => {
-    if (!tradeStock) {
+    if (!tradeStock || tradeLoading) {
       return;
     }
 
@@ -613,66 +615,59 @@ export default function AIPicks() {
       }
     }
 
+    const stock = tradeStock;
+
+    setTradeLoading(true);
+    setTradeError("");
+    setTradeSuccess("");
+
+    // The backend is authoritative for executing the paper trade.
     try {
-      setTradeLoading(true);
-      setTradeError("");
-
-      // Backend remains authoritative for execution.
-      await buyStock(
-        tradeStock.stock_id,
-        quantity
-      );
-
-      // -------------------------------------------------
-      // REFRESH WALLET
-      // -------------------------------------------------
-
-      const updatedPortfolio =
-        await getPortfolioSummary();
-
-      setPortfolio(updatedPortfolio);
-
-      // -------------------------------------------------
-      // REFRESH RECOMMENDATIONS
-      // -------------------------------------------------
-
-      try {
-        const updatedRecommendations =
-          await getRecommendations();
-
-        setRecommendations(
-          updatedRecommendations.recommendations || []
-        );
-      } catch (error) {
-        console.error(
-          "Recommendation refresh failed:",
-          error
-        );
-      }
-
-      // -------------------------------------------------
-      // CLOSE MODAL
-      // -------------------------------------------------
-
-      setTradeStock(null);
-      setTradeQuantity(1);
-      setTradeMode("amount");
-      setTradeAmount("");
-      setTradeError("");
+      await buyStock(stock.stock_id, quantity);
     } catch (error) {
-      console.error(
-        "Paper BUY failed:",
-        error
-      );
-
+      console.error("Paper BUY failed:", error);
       setTradeError(
         error instanceof Error
           ? error.message
           : "Could not complete paper trade"
       );
-    } finally {
       setTradeLoading(false);
+      return;
     }
+
+    // The buy request succeeded. Do not treat later refresh failures
+    // as a failed purchase, because the transaction has already run.
+    setTradeLoading(false);
+    setTradeStock(null);
+    setTradeQuantity(1);
+    setTradeMode("amount");
+    setTradeAmount("");
+    setTradeError("");
+    setTradeSuccess(
+      `${stock.symbol.replace(".NS", "")} bought successfully in paper trading.`
+    );
+
+    // Refresh the wallet independently. If this fails, preserve the
+    // success confirmation and explain that displayed data may be stale.
+    void getPortfolioSummary()
+      .then((updatedPortfolio) => {
+        setPortfolio(updatedPortfolio);
+      })
+      .catch((refreshError) => {
+        console.error("Portfolio refresh failed after successful buy:", refreshError);
+        setTradeSuccess(
+          `${stock.symbol.replace(".NS", "")} was bought successfully, but the portfolio could not refresh. Open Portfolio or reload to see the latest holdings.`
+        );
+      });
+
+    // Recommendation refresh is also independent of trade execution.
+    void getRecommendations()
+      .then((updatedRecommendations) => {
+        setRecommendations(updatedRecommendations.recommendations || []);
+      })
+      .catch((refreshError) => {
+        console.error("Recommendation refresh failed:", refreshError);
+      });
   };
 
   // =====================================================
@@ -886,6 +881,32 @@ export default function AIPicks() {
             </span>
           )}
         </div>
+
+        {tradeSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            <p className="font-semibold">✓ {tradeSuccess}</p>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/portfolio")}
+                className="font-semibold underline underline-offset-2"
+              >
+                View Portfolio
+              </button>
+              <button
+                type="button"
+                onClick={() => setTradeSuccess("")}
+                className="text-xs font-medium underline underline-offset-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* How FinGrow generates these picks */}
 
