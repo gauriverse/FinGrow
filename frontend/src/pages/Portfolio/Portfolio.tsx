@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 import {
   FiSettings,
   FiLogOut,
@@ -322,8 +323,8 @@ function PortfolioCharts({
                   onClick={() => setGroupBy(option)}
                   aria-pressed={groupBy === option}
                   className={`px-2.5 py-1 rounded-md capitalize transition-colors ${FOCUS} ${groupBy === option
-                      ? "bg-white text-[#0B3528] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
+                    ? "bg-white text-[#0B3528] shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
                   {option}
@@ -915,94 +916,9 @@ export default function Portfolio() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-5">
-            {/* WALLET */}
-
-            <button
-              onClick={() => navigate("/wallet")}
-              title="Open wallet"
-              className={`text-right rounded px-1.5 py-0.5 -mx-1.5 hover:bg-slate-50 transition-colors ${FOCUS}`}
-            >
-              <p className="text-[10px] font-semibold text-slate-400 tracking-wide">
-                WALLET
-              </p>
-
-              <p className="text-sm font-bold text-slate-800 tabular-nums">
-                {portfolio
-                  ? formatCurrency(portfolio.available_balance)
-                  : "Loading..."}
-              </p>
-            </button>
-
-            {/* NOTIFICATION */}
-
-            <button
-              aria-label="Notifications"
-              className={`w-9 h-9 rounded-full bg-[#FFF8E8] flex items-center justify-center text-amber-700 hover:brightness-95 transition ${FOCUS}`}
-            >
-              <FiBell size={16} />
-            </button>
-
-            {/* PROFILE */}
-
-            <div ref={profileRef} className="relative">
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                aria-haspopup="menu"
-                aria-expanded={profileOpen}
-                aria-label="Account menu"
-                className={`w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-[#0F4C3A] hover:ring-2 hover:ring-emerald-200 transition ${FOCUS}`}
-              >
-                {initials.toUpperCase()}
-              </button>
-
-              {profileOpen && (
-                <motion.div
-                  className="absolute right-0 top-11 w-60 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.12 }}
-                  role="menu"
-                >
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-[#0F4C3A]">
-                        {initials.toUpperCase()}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">
-                          {firstName}
-                        </p>
-
-                        <p className="text-xs text-slate-400 truncate">
-                          {profile?.email || ""}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => navigate("/settings")}
-                    role="menuitem"
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <FiSettings />
-                    Settings
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    role="menuitem"
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <FiLogOut />
-                    Logout
-                  </button>
-                </motion.div>
-              )}
-            </div>
-          </div>
+          <HeaderActions
+            balance={portfolio ? portfolio.available_balance : null}
+          />
         </header>
 
         {/* =================================================
@@ -1154,8 +1070,8 @@ export default function Portfolio() {
                           }}
                           aria-pressed={holdingsTab === value}
                           className={`px-3 py-1 rounded-md transition-colors ${FOCUS} ${holdingsTab === value
-                              ? "bg-white text-[#0B3528] shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
+                            ? "bg-white text-[#0B3528] shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
                             }`}
                         >
                           {label}

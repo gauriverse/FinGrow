@@ -12,6 +12,7 @@ import {
   buyStock,
 } from "../../services/portfolioService";
 import Sidebar from "../../components/Sidebar";
+import HeaderActions from "../../components/HeaderActions";
 
 type Recommendation = {
   symbol: string;
@@ -206,82 +207,9 @@ function PageChrome({
           </button>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-5">
-          <div className="text-right leading-tight">
-            <p className="text-[10px] font-semibold tracking-wide text-slate-400">
-              WALLET
-            </p>
-
-            <p className="text-sm font-bold text-slate-800">
-              {portfolio
-                ? `₹${Number(portfolio.available_balance).toLocaleString(
-                  "en-IN",
-                  {
-                    minimumFractionDigits: 2,
-                  }
-                )}`
-                : "Loading..."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF8E8] text-base transition hover:bg-[#FFF1CC] active:scale-95 motion-reduce:transform-none"
-            aria-label="Notifications"
-          >
-            🔔
-          </button>
-
-          <div ref={profileRef} className="relative">
-            <button
-              onClick={onToggleProfile}
-              aria-haspopup="menu"
-              aria-expanded={profileOpen}
-              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A] transition hover:ring-2 hover:ring-emerald-200"
-              aria-label="Open profile menu"
-            >
-              {initials ? initials.toUpperCase() : "U"}
-            </button>
-
-            {profileOpen && (
-              <div className="fg-fade-in absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-bold text-[#0F4C3A]">
-                      {initials ? initials.toUpperCase() : "U"}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">
-                        {firstName === "there" ? "User" : firstName}
-                      </p>
-
-                      <p className="truncate text-xs text-slate-400">
-                        {email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={onOpenSettings}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                >
-                  <FiSettings size={16} />
-                  Settings
-                </button>
-
-                <button
-                  onClick={onLogout}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition hover:bg-red-50"
-                >
-                  <FiLogOut size={16} />
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <HeaderActions
+          balance={portfolio ? portfolio.available_balance : null}
+        />
       </header>
 
       {children}
@@ -1436,8 +1364,8 @@ export default function AIPicks() {
                     }}
                     disabled={tradeLoading}
                     className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tradeMode === "amount"
-                        ? "bg-white text-[#0F4C3A] shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white text-[#0F4C3A] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
                       }`}
                   >
                     Invest by ₹
@@ -1477,8 +1405,8 @@ export default function AIPicks() {
                     }}
                     disabled={tradeLoading}
                     className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tradeMode === "quantity"
-                        ? "bg-white text-[#0F4C3A] shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white text-[#0F4C3A] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
                       }`}
                   >
                     Buy by shares
