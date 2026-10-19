@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiArrowRight, FiDownload, FiRefreshCw } from "react-icons/fi";
+import { FiArrowRight, FiDownload, FiMenu, FiRefreshCw } from "react-icons/fi";
 import { MotionConfig, motion } from "framer-motion";
-
+import Sidebar from "../../components/Sidebar";
 import {
   getPortfolioSummary,
   addFunds,
@@ -100,6 +100,7 @@ const startOfDay = (date: Date): number =>
 
 export default function Wallet() {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [summaryError, setSummaryError] = useState("");
@@ -237,10 +238,10 @@ export default function Wallet() {
           : diff === 1
             ? "Yesterday"
             : date.toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              });
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
 
       const last = groups[groups.length - 1];
 
@@ -342,21 +343,33 @@ export default function Wallet() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen bg-[#FAF9F5] font-sans text-slate-900 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm lg:shrink-0">
           <div className="flex h-14 items-center justify-between px-4 md:px-6">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className={`group flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 ${FOCUS}`}
-            >
-              <span
-                aria-hidden="true"
-                className="inline-block transition-transform motion-safe:group-hover:-translate-x-0.5"
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 active:scale-95 motion-reduce:transition-none ${FOCUS}`}
+                aria-label="Open menu"
+                title="Menu"
               >
-                ←
-              </span>
-              Dashboard
-            </button>
+                <FiMenu size={20} />
+              </button>
+
+              <button
+                onClick={() => navigate("/dashboard")}
+                className={`group flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 ${FOCUS}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="inline-block transition-transform motion-safe:group-hover:-translate-x-0.5"
+                >
+                  ←
+                </span>
+                Dashboard
+              </button>
+            </div>
 
             <button
               onClick={() => navigate("/portfolio")}
@@ -380,241 +393,239 @@ export default function Wallet() {
 
           <div className="mt-3 grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[400px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
             <div className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
-            {/* =====================================================
+              {/* =====================================================
                 BALANCE
             ===================================================== */}
-            <section className="rounded-xl border border-slate-200 bg-white p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-500">Available to trade</p>
+              <section className="rounded-xl border border-slate-200 bg-white p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-slate-500">Available to trade</p>
 
-                {summary && (
-                  <button
-                    onClick={() => navigate("/portfolio")}
-                    className={`text-xs font-semibold text-[#0F4C3A] hover:underline rounded ${FOCUS}`}
-                  >
-                    View portfolio
-                  </button>
+                  {summary && (
+                    <button
+                      onClick={() => navigate("/portfolio")}
+                      className={`text-xs font-semibold text-[#0F4C3A] hover:underline rounded ${FOCUS}`}
+                    >
+                      View portfolio
+                    </button>
+                  )}
+                </div>
+
+                {summary ? (
+                  <p className="mt-0.5 font-serif break-words text-4xl font-semibold tracking-tight tabular-nums text-[#0F4C3A] md:text-5xl lg:text-4xl">
+                    {inr(available)}
+                  </p>
+                ) : summaryError ? (
+                  <div className="mt-3 flex items-center gap-3" role="alert">
+                    <p className="text-sm text-red-600">{summaryError}</p>
+                    <button
+                      onClick={retrySummary}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 ${FOCUS}`}
+                    >
+                      <FiRefreshCw size={12} />
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-2 h-11 w-60 animate-pulse rounded-lg bg-slate-100 motion-reduce:animate-none" />
                 )}
-              </div>
 
-              {summary ? (
-                <p className="mt-0.5 font-serif break-words text-4xl font-semibold tracking-tight tabular-nums text-[#0F4C3A] md:text-5xl lg:text-4xl">
-                  {inr(available)}
-                </p>
-              ) : summaryError ? (
-                <div className="mt-3 flex items-center gap-3" role="alert">
-                  <p className="text-sm text-red-600">{summaryError}</p>
-                  <button
-                    onClick={retrySummary}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 ${FOCUS}`}
-                  >
-                    <FiRefreshCw size={12} />
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-2 h-11 w-60 animate-pulse rounded-lg bg-slate-100 motion-reduce:animate-none" />
-              )}
-
-              {/* Cash vs invested */}
-              <div className="mt-5">
-                <div
-                  className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
-                  role="img"
-                  aria-label={`${cashPercent.toFixed(0)} percent cash, ${(
-                    100 - cashPercent
-                  ).toFixed(0)} percent invested`}
-                >
+                {/* Cash vs invested */}
+                <div className="mt-5">
                   <div
-                    className="h-full bg-[#0F4C3A] transition-all duration-500 motion-reduce:transition-none"
-                    style={{ width: `${summary ? cashPercent : 0}%` }}
-                  />
-                  <div className="h-full flex-1 bg-[#0B1B2E]/80" />
-                </div>
-
-                <div className="mt-2.5 flex flex-wrap justify-between gap-x-6 gap-y-1.5 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#0F4C3A]" />
-                    <span className="text-slate-500">Cash</span>
-                    <span className="font-semibold tabular-nums">
-                      {summary ? inr(available) : "—"}
-                    </span>
+                    className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
+                    role="img"
+                    aria-label={`${cashPercent.toFixed(0)} percent cash, ${(
+                      100 - cashPercent
+                    ).toFixed(0)} percent invested`}
+                  >
+                    <div
+                      className="h-full bg-[#0F4C3A] transition-all duration-500 motion-reduce:transition-none"
+                      style={{ width: `${summary ? cashPercent : 0}%` }}
+                    />
+                    <div className="h-full flex-1 bg-[#0B1B2E]/80" />
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#0B1B2E]/80" />
-                    <span className="text-slate-500">In stocks</span>
-                    <span className="font-semibold tabular-nums">
-                      {summary ? inr(invested) : "—"}
-                    </span>
+                  <div className="mt-2.5 flex flex-wrap justify-between gap-x-6 gap-y-1.5 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#0F4C3A]" />
+                      <span className="text-slate-500">Cash</span>
+                      <span className="font-semibold tabular-nums">
+                        {summary ? inr(available) : "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#0B1B2E]/80" />
+                      <span className="text-slate-500">In stocks</span>
+                      <span className="font-semibold tabular-nums">
+                        {summary ? inr(invested) : "—"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Key figures */}
-              <dl className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-3">
-                <div className="pr-3 sm:pr-5">
-                  <dt
-                    className="text-xs text-slate-500"
-                    title="Your starting balance with FinGrow"
-                  >
-                    Total funds added
-                  </dt>
-                  <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
-                    {funded != null ? inr(funded) : "—"}
-                  </dd>
-                </div>
+                {/* Key figures */}
+                <dl className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-3">
+                  <div className="pr-3 sm:pr-5">
+                    <dt
+                      className="text-xs text-slate-500"
+                      title="Your starting balance with FinGrow"
+                    >
+                      Total funds added
+                    </dt>
+                    <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
+                      {funded != null ? inr(funded) : "—"}
+                    </dd>
+                  </div>
 
-                <div className="px-3 sm:px-5">
-                  <dt className="text-xs text-slate-500">Portfolio value</dt>
-                  <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
-                    {summary ? inr(totalValue) : "—"}
-                  </dd>
-                </div>
+                  <div className="px-3 sm:px-5">
+                    <dt className="text-xs text-slate-500">Portfolio value</dt>
+                    <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
+                      {summary ? inr(totalValue) : "—"}
+                    </dd>
+                  </div>
 
-                <div className="pl-3 sm:pl-5">
-                  <dt
-                    className="text-xs text-slate-500"
-                    title="Portfolio value compared with funds added"
-                  >
-                    Return on funds
-                  </dt>
-                  <dd
-                    className={`mt-0.5 text-base font-semibold tabular-nums sm:text-lg ${
-                      returnPercent == null
-                        ? ""
-                        : returnPercent >= 0
-                          ? "text-emerald-600"
-                          : "text-red-600"
-                    }`}
-                  >
-                    {returnPercent == null
-                      ? "—"
-                      : `${returnPercent >= 0 ? "+" : "−"}${Math.abs(
+                  <div className="pl-3 sm:pl-5">
+                    <dt
+                      className="text-xs text-slate-500"
+                      title="Portfolio value compared with funds added"
+                    >
+                      Return on funds
+                    </dt>
+                    <dd
+                      className={`mt-0.5 text-base font-semibold tabular-nums sm:text-lg ${returnPercent == null
+                          ? ""
+                          : returnPercent >= 0
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                        }`}
+                    >
+                      {returnPercent == null
+                        ? "—"
+                        : `${returnPercent >= 0 ? "+" : "−"}${Math.abs(
                           returnPercent,
                         ).toFixed(2)}%`}
-                  </dd>
-                </div>
-              </dl>
-            </section>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
 
-            {/* =====================================================
+              {/* =====================================================
                 ADD MONEY
             ===================================================== */}
-            <section className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="font-serif text-xl font-semibold leading-tight">
-                Add money
-              </h2>
-              <p className="mt-0.5 text-sm text-slate-500">
-                Top up your wallet to practise with a bigger budget.
-              </p>
+              <section className="rounded-xl border border-slate-200 bg-white p-5">
+                <h2 className="font-serif text-xl font-semibold leading-tight">
+                  Add money
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Top up your wallet to practise with a bigger budget.
+                </p>
 
-              <div className="mt-4 grid grid-cols-4 gap-1.5">
-                {QUICK_AMOUNTS.map((value) => {
-                  const selected = parsedAmount === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => {
-                        setAmount(String(value));
-                        setAddError("");
-                      }}
-                      disabled={adding}
-                      aria-pressed={selected}
-                      className={`rounded-lg border px-1 py-2 text-sm font-semibold tabular-nums transition-colors motion-safe:active:scale-[0.97] disabled:opacity-50 ${FOCUS} ${
-                        selected
-                          ? "border-[#0F4C3A] bg-[#F1F8F4] text-[#0F4C3A]"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      ₹{value.toLocaleString("en-IN")}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label
-                htmlFor="wallet-amount"
-                className="mt-4 block text-sm font-medium text-slate-700"
-              >
-                Or enter an amount
-              </label>
-
-              <div className="mt-1.5 flex items-center rounded-lg border border-slate-200 px-3 transition-colors focus-within:border-[#0F4C3A] focus-within:ring-2 focus-within:ring-[#0F4C3A]/20">
-                <span className="text-sm font-semibold text-slate-400">₹</span>
-                <input
-                  id="wallet-amount"
-                  type="number"
-                  inputMode="numeric"
-                  min={MIN_AMOUNT}
-                  max={MAX_AMOUNT}
-                  step="1"
-                  value={amount}
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    setAddError("");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
-                  }}
-                  disabled={adding}
-                  placeholder="0"
-                  className="w-full border-0 bg-transparent px-2 py-2.5 text-base tabular-nums focus:outline-none"
-                />
-              </div>
-
-              <p className="mt-1.5 text-xs text-slate-400">
-                Between {inrShort(MIN_AMOUNT)} and {inrShort(MAX_AMOUNT)} per
-                deposit.
-              </p>
-
-              {amountIsValid && summary && (
-                <div className="mt-3 flex items-center justify-between rounded-lg bg-[#F1F8F4] px-3.5 py-2.5 text-sm">
-                  <span className="text-slate-600">New balance</span>
-                  <span className="font-semibold tabular-nums text-[#0F4C3A]">
-                    {inr(available + parsedAmount)}
-                  </span>
+                <div className="mt-4 grid grid-cols-4 gap-1.5">
+                  {QUICK_AMOUNTS.map((value) => {
+                    const selected = parsedAmount === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setAmount(String(value));
+                          setAddError("");
+                        }}
+                        disabled={adding}
+                        aria-pressed={selected}
+                        className={`rounded-lg border px-1 py-2 text-sm font-semibold tabular-nums transition-colors motion-safe:active:scale-[0.97] disabled:opacity-50 ${FOCUS} ${selected
+                            ? "border-[#0F4C3A] bg-[#F1F8F4] text-[#0F4C3A]"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                      >
+                        ₹{value.toLocaleString("en-IN")}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
 
-              {addError && (
-                <motion.div
-                  role="alert"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
+                <label
+                  htmlFor="wallet-amount"
+                  className="mt-4 block text-sm font-medium text-slate-700"
                 >
-                  {addError}
-                </motion.div>
-              )}
+                  Or enter an amount
+                </label>
 
-              {justAdded && (
-                <motion.div
-                  role="status"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700"
+                <div className="mt-1.5 flex items-center rounded-lg border border-slate-200 px-3 transition-colors focus-within:border-[#0F4C3A] focus-within:ring-2 focus-within:ring-[#0F4C3A]/20">
+                  <span className="text-sm font-semibold text-slate-400">₹</span>
+                  <input
+                    id="wallet-amount"
+                    type="number"
+                    inputMode="numeric"
+                    min={MIN_AMOUNT}
+                    max={MAX_AMOUNT}
+                    step="1"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setAddError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAdd();
+                    }}
+                    disabled={adding}
+                    placeholder="0"
+                    className="w-full border-0 bg-transparent px-2 py-2.5 text-base tabular-nums focus:outline-none"
+                  />
+                </div>
+
+                <p className="mt-1.5 text-xs text-slate-400">
+                  Between {inrShort(MIN_AMOUNT)} and {inrShort(MAX_AMOUNT)} per
+                  deposit.
+                </p>
+
+                {amountIsValid && summary && (
+                  <div className="mt-3 flex items-center justify-between rounded-lg bg-[#F1F8F4] px-3.5 py-2.5 text-sm">
+                    <span className="text-slate-600">New balance</span>
+                    <span className="font-semibold tabular-nums text-[#0F4C3A]">
+                      {inr(available + parsedAmount)}
+                    </span>
+                  </div>
+                )}
+
+                {addError && (
+                  <motion.div
+                    role="alert"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
+                  >
+                    {addError}
+                  </motion.div>
+                )}
+
+                {justAdded && (
+                  <motion.div
+                    role="status"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700"
+                  >
+                    {justAdded}
+                  </motion.div>
+                )}
+
+                <button
+                  onClick={handleAdd}
+                  disabled={adding || !amountIsValid}
+                  aria-busy={adding}
+                  className={`mt-4 w-full rounded-lg bg-[#0F4C3A] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#0B3528] motion-safe:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS} focus-visible:ring-offset-2`}
                 >
-                  {justAdded}
-                </motion.div>
-              )}
-
-              <button
-                onClick={handleAdd}
-                disabled={adding || !amountIsValid}
-                aria-busy={adding}
-                className={`mt-4 w-full rounded-lg bg-[#0F4C3A] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#0B3528] motion-safe:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS} focus-visible:ring-offset-2`}
-              >
-                {adding
-                  ? "Adding..."
-                  : amountIsValid
-                    ? `Add ${inrShort(parsedAmount)}`
-                    : "Add money"}
-              </button>
-            </section>
+                  {adding
+                    ? "Adding..."
+                    : amountIsValid
+                      ? `Add ${inrShort(parsedAmount)}`
+                      : "Add money"}
+                </button>
+              </section>
 
             </div>
 
@@ -639,11 +650,10 @@ export default function Wallet() {
                         role="tab"
                         aria-selected={filter === item.key}
                         onClick={() => setFilter(item.key)}
-                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${FOCUS} ${
-                          filter === item.key
+                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${FOCUS} ${filter === item.key
                             ? "bg-white text-[#0F4C3A] shadow-sm"
                             : "text-slate-500 hover:text-slate-700"
-                        }`}
+                          }`}
                       >
                         {item.label}
                         {history && (
@@ -668,172 +678,170 @@ export default function Wallet() {
               </div>
 
               <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              {historyError ? (
-                <div className="px-5 py-8 text-center" role="alert">
-                  <p className="text-sm text-red-600">{historyError}</p>
-                  <button
-                    onClick={retryHistory}
-                    className={`mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 ${FOCUS}`}
-                  >
-                    <FiRefreshCw size={12} />
-                    Try again
-                  </button>
-                </div>
-              ) : !history ? (
-                <div
-                  className="divide-y divide-slate-100"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span className="sr-only">Loading activity...</span>
-
-                  {[0, 1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="px-5 py-3 animate-pulse motion-reduce:animate-none"
+                {historyError ? (
+                  <div className="px-5 py-8 text-center" role="alert">
+                    <p className="text-sm text-red-600">{historyError}</p>
+                    <button
+                      onClick={retryHistory}
+                      className={`mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 ${FOCUS}`}
                     >
-                      <div className="h-4 w-40 rounded bg-slate-100" />
-                      <div className="mt-2 h-3 w-28 rounded bg-slate-100" />
-                    </div>
-                  ))}
-                </div>
-              ) : visibleHistory.length === 0 ? (
-                <div className="px-5 py-8 text-center">
-                  <p className="text-sm font-medium text-slate-700">
-                    {history.length === 0
-                      ? "No activity yet"
-                      : "Nothing in this view"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {history.length === 0
-                      ? "Add money or place a paper trade and it will show up here."
-                      : "Try a different filter."}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={`sticky top-0 z-10 hidden border-b border-slate-100 bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 lg:grid lg:items-center lg:gap-4 ${LEDGER_COLS}`}
-                  >
-                    <span>Type</span>
-                    <span>Description</span>
-                    <span>Details</span>
-                    <span>Time</span>
-                    <span className="text-right">Amount</span>
-                    <span className="text-right">Balance</span>
+                      <FiRefreshCw size={12} />
+                      Try again
+                    </button>
                   </div>
+                ) : !history ? (
+                  <div
+                    className="divide-y divide-slate-100"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span className="sr-only">Loading activity...</span>
 
-                  {groupedHistory.map((group) => (
-                    <div key={group.label}>
-                      <p className="border-b border-slate-100 bg-slate-50 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        {group.label}
-                      </p>
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="px-5 py-3 animate-pulse motion-reduce:animate-none"
+                      >
+                        <div className="h-4 w-40 rounded bg-slate-100" />
+                        <div className="mt-2 h-3 w-28 rounded bg-slate-100" />
+                      </div>
+                    ))}
+                  </div>
+                ) : visibleHistory.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-sm font-medium text-slate-700">
+                      {history.length === 0
+                        ? "No activity yet"
+                        : "Nothing in this view"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {history.length === 0
+                        ? "Add money or place a paper trade and it will show up here."
+                        : "Try a different filter."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className={`sticky top-0 z-10 hidden border-b border-slate-100 bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 lg:grid lg:items-center lg:gap-4 ${LEDGER_COLS}`}
+                    >
+                      <span>Type</span>
+                      <span>Description</span>
+                      <span>Details</span>
+                      <span>Time</span>
+                      <span className="text-right">Amount</span>
+                      <span className="text-right">Balance</span>
+                    </div>
 
-                      <ul className="divide-y divide-slate-100">
-                        {group.items.map((item) => {
-                          const style = KIND_STYLE[item.kind] ?? KIND_STYLE.buy;
+                    {groupedHistory.map((group) => (
+                      <div key={group.label}>
+                        <p className="border-b border-slate-100 bg-slate-50 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          {group.label}
+                        </p>
 
-                          return (
-                            <li
-                              key={`${item.kind}-${item.id}`}
-                              className="px-5 py-2.5 transition-colors hover:bg-slate-50/70"
-                            >
-                              {/* Mobile / tablet */}
-                              <div className="flex items-center justify-between gap-3 lg:hidden">
-                                <div className="flex min-w-0 items-center gap-3">
+                        <ul className="divide-y divide-slate-100">
+                          {group.items.map((item) => {
+                            const style = KIND_STYLE[item.kind] ?? KIND_STYLE.buy;
+
+                            return (
+                              <li
+                                key={`${item.kind}-${item.id}`}
+                                className="px-5 py-2.5 transition-colors hover:bg-slate-50/70"
+                              >
+                                {/* Mobile / tablet */}
+                                <div className="flex items-center justify-between gap-3 lg:hidden">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <span
+                                      className={`w-14 shrink-0 rounded-md px-2 py-1 text-center text-xs font-semibold ${style.badge}`}
+                                    >
+                                      {style.label}
+                                    </span>
+
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold">
+                                        {item.title}
+                                      </p>
+                                      <p className="truncate text-xs text-slate-400 tabular-nums">
+                                        {item.detail ? `${item.detail} · ` : ""}
+                                        {formatTime(item.date)}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 text-right">
+                                    <p
+                                      className={`text-sm font-semibold tabular-nums ${style.sign === "+"
+                                          ? "text-emerald-600"
+                                          : "text-slate-800"
+                                        }`}
+                                    >
+                                      {style.sign}
+                                      {inr(item.amount)}
+                                    </p>
+
+                                    {item.balance_after != null && (
+                                      <p className="text-xs text-slate-400 tabular-nums">
+                                        Balance {inr(item.balance_after)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Desktop ledger */}
+                                <div
+                                  className={`hidden lg:grid lg:items-center lg:gap-4 ${LEDGER_COLS}`}
+                                >
                                   <span
-                                    className={`w-14 shrink-0 rounded-md px-2 py-1 text-center text-xs font-semibold ${style.badge}`}
+                                    className={`rounded-md px-2 py-1 text-center text-xs font-semibold ${style.badge}`}
                                   >
                                     {style.label}
                                   </span>
 
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold">
-                                      {item.title}
-                                    </p>
-                                    <p className="truncate text-xs text-slate-400 tabular-nums">
-                                      {item.detail ? `${item.detail} · ` : ""}
-                                      {formatTime(item.date)}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="shrink-0 text-right">
                                   <p
-                                    className={`text-sm font-semibold tabular-nums ${
-                                      style.sign === "+"
+                                    className="truncate text-sm font-semibold"
+                                    title={item.title}
+                                  >
+                                    {item.title}
+                                  </p>
+
+                                  <p className="truncate text-sm text-slate-500 tabular-nums">
+                                    {item.detail || "—"}
+                                  </p>
+
+                                  <p className="text-xs text-slate-400 tabular-nums">
+                                    {formatTime(item.date)}
+                                  </p>
+
+                                  <p
+                                    className={`text-right text-sm font-semibold tabular-nums ${style.sign === "+"
                                         ? "text-emerald-600"
                                         : "text-slate-800"
-                                    }`}
+                                      }`}
                                   >
                                     {style.sign}
                                     {inr(item.amount)}
                                   </p>
 
-                                  {item.balance_after != null && (
-                                    <p className="text-xs text-slate-400 tabular-nums">
-                                      Balance {inr(item.balance_after)}
-                                    </p>
-                                  )}
+                                  <p className="text-right text-xs text-slate-400 tabular-nums">
+                                    {item.balance_after != null
+                                      ? inr(item.balance_after)
+                                      : "—"}
+                                  </p>
                                 </div>
-                              </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
 
-                              {/* Desktop ledger */}
-                              <div
-                                className={`hidden lg:grid lg:items-center lg:gap-4 ${LEDGER_COLS}`}
-                              >
-                                <span
-                                  className={`rounded-md px-2 py-1 text-center text-xs font-semibold ${style.badge}`}
-                                >
-                                  {style.label}
-                                </span>
-
-                                <p
-                                  className="truncate text-sm font-semibold"
-                                  title={item.title}
-                                >
-                                  {item.title}
-                                </p>
-
-                                <p className="truncate text-sm text-slate-500 tabular-nums">
-                                  {item.detail || "—"}
-                                </p>
-
-                                <p className="text-xs text-slate-400 tabular-nums">
-                                  {formatTime(item.date)}
-                                </p>
-
-                                <p
-                                  className={`text-right text-sm font-semibold tabular-nums ${
-                                    style.sign === "+"
-                                      ? "text-emerald-600"
-                                      : "text-slate-800"
-                                  }`}
-                                >
-                                  {style.sign}
-                                  {inr(item.amount)}
-                                </p>
-
-                                <p className="text-right text-xs text-slate-400 tabular-nums">
-                                  {item.balance_after != null
-                                    ? inr(item.balance_after)
-                                    : "—"}
-                                </p>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  ))}
-
-                  {history.length >= HISTORY_LIMIT && (
-                    <p className="border-t border-slate-100 px-5 py-2 text-center text-xs text-slate-400">
-                      Showing your latest {HISTORY_LIMIT} transactions.
-                    </p>
-                  )}
-                </>
-              )}
+                    {history.length >= HISTORY_LIMIT && (
+                      <p className="border-t border-slate-100 px-5 py-2 text-center text-xs text-slate-400">
+                        Showing your latest {HISTORY_LIMIT} transactions.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             </section>
           </div>

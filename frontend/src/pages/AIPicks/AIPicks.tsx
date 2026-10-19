@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FiSettings, FiLogOut } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 import {
@@ -11,6 +11,7 @@ import {
   getPortfolioSummary,
   buyStock,
 } from "../../services/portfolioService";
+import Sidebar from "../../components/Sidebar";
 
 type Recommendation = {
   symbol: string;
@@ -66,10 +67,10 @@ const formatFeatureName = (name: string) => {
     .trim();
 
   console.log("XAI feature name:", {
-  original: name,
-  cleanName,
-  formatted: featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " "),
-});
+    original: name,
+    cleanName,
+    formatted: featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " "),
+  });
 
   return featureNames[cleanName] ?? featureNames[name] ?? cleanName.replace(/_/g, " ");
 };
@@ -130,11 +131,10 @@ function InfoTip({ text }: { text: string }) {
 
 type ChromeProps = {
   children: ReactNode;
-  navItems: string[];
-  pathname: string;
+
   sidebarOpen: boolean;
   onSidebarOpenChange: (open: boolean) => void;
-  onNavigate: (item: string) => void;
+
   onLogoClick: () => void;
   portfolio: any;
   profileRef: RefObject<HTMLDivElement | null>;
@@ -150,11 +150,11 @@ type ChromeProps = {
 // Sidebar + top bar shared by the loading, error and main views.
 function PageChrome({
   children,
-  navItems,
-  pathname,
+
+
   sidebarOpen,
   onSidebarOpenChange,
-  onNavigate,
+
   onLogoClick,
   portfolio,
   profileRef,
@@ -166,9 +166,7 @@ function PageChrome({
   firstName,
   email,
 }: ChromeProps) {
-  const isActive = (item: string) =>
-    (item === "Dashboard" && pathname === "/dashboard") ||
-    (item === "AI Picks" && pathname === "/ai-picks");
+
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] font-sans">
@@ -176,72 +174,10 @@ function PageChrome({
 
       {/* Sidebar */}
 
-      {sidebarOpen && (
-        <div
-          className="fg-fade-in fixed inset-0 z-40 bg-black/30"
-          onClick={() => onSidebarOpenChange(false)}
-        />
-      )}
-
-      <aside
-        aria-label="Main navigation"
-        className={`fixed top-0 left-0 z-50 flex h-full w-60 transform flex-col bg-[#0B1B2E]
-        transition-transform duration-300 ease-in-out motion-reduce:transition-none
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <div className="flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#0F4C3A] font-serif text-base font-bold text-white">
-              F
-            </div>
-
-            <span className="font-serif text-lg font-bold tracking-tight text-white">
-              FinGrow
-            </span>
-          </div>
-
-          <button
-            onClick={() => onSidebarOpenChange(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-slate-400 transition hover:bg-white/5 hover:text-white"
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
-        </div>
-
-        <nav className="flex-1 space-y-0.5 px-3">
-          {navItems.map((item) => {
-            const active = isActive(item);
-
-            return (
-              <button
-                key={item}
-                onClick={() => onNavigate(item)}
-                aria-current={active ? "page" : undefined}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  active
-                    ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    active ? "bg-white" : "bg-slate-500"
-                  }`}
-                />
-
-                {item}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-white/10 px-5 py-4">
-          <p className="text-[11px] text-slate-500">
-            Paper trading · virtual funds only
-          </p>
-        </div>
-      </aside>
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => onSidebarOpenChange(false)}
+      />
 
       {/* Top bar */}
 
@@ -279,11 +215,11 @@ function PageChrome({
             <p className="text-sm font-bold text-slate-800">
               {portfolio
                 ? `₹${Number(portfolio.available_balance).toLocaleString(
-                    "en-IN",
-                    {
-                      minimumFractionDigits: 2,
-                    }
-                  )}`
+                  "en-IN",
+                  {
+                    minimumFractionDigits: 2,
+                  }
+                )}`
                 : "Loading..."}
             </p>
           </div>
@@ -355,7 +291,7 @@ function PageChrome({
 
 export default function AIPicks() {
   const navigate = useNavigate();
-  const location = useLocation();
+
 
   // =====================================================
   // USER / UI STATE
@@ -397,7 +333,7 @@ export default function AIPicks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  
+
   const [explanations, setExplanations] = useState<
     Record<string, StockExplanation>
   >({});
@@ -412,7 +348,7 @@ export default function AIPicks() {
     Record<string, string>
   >({});
 
-  
+
   const handleLoadExplanation = async (symbol: string) => {
     // If the explanation is already cached, simply toggle its visibility.
     if (explanations[symbol]) {
@@ -601,53 +537,15 @@ export default function AIPicks() {
 
   const initials =
     nameParts.length > 1
-      ? `${nameParts[0][0]}${
-          nameParts[nameParts.length - 1][0]
-        }`
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]
+      }`
       : nameParts[0]?.slice(0, 2);
 
   // =====================================================
   // NAVIGATION
   // =====================================================
 
-  const navItems = [
-    "Dashboard",
-    "AI Picks",
-    "Portfolio",
-    "Watchlist",
-    "Learn",
-    "Settings",
-  ];
 
-  const handleNavigation = (item: string) => {
-    setSidebarOpen(false);
-
-    if (item === "Dashboard") {
-      navigate("/dashboard");
-      return;
-    }
-
-    if (item === "AI Picks") {
-      navigate("/ai-picks");
-      return;
-    }
-
-    if (item === "Settings") {
-      navigate("/settings");
-      return;
-    }
-
-    if (item === "Learn") {
-      navigate("/learn");
-      return;
-    }
-    if (item === "Portfolio") {
-      navigate("/portfolio");
-      return;
-    }
-
-    // Portfolio and Watchlist are not connected yet.
-  };
 
   // =====================================================
   // LOGOUT
@@ -893,8 +791,8 @@ export default function AIPicks() {
         Number.isFinite(enteredAmount) &&
         enteredAmount > 0
         ? Math.floor(
-            enteredAmount / tradePrice
-          )
+          enteredAmount / tradePrice
+        )
         : 0
       : tradeQuantity;
 
@@ -903,12 +801,12 @@ export default function AIPicks() {
 
   const remainingAmount =
     tradeMode === "amount" &&
-    enteredAmount > 0 &&
-    calculatedQuantity > 0
+      enteredAmount > 0 &&
+      calculatedQuantity > 0
       ? Math.max(
-          0,
-          enteredAmount - estimatedTradeValue
-        )
+        0,
+        enteredAmount - estimatedTradeValue
+      )
       : 0;
 
   // =====================================================
@@ -916,11 +814,11 @@ export default function AIPicks() {
   // =====================================================
 
   const chromeProps = {
-    navItems,
-    pathname: location.pathname,
+
+
     sidebarOpen,
     onSidebarOpenChange: setSidebarOpen,
-    onNavigate: handleNavigation,
+
     onLogoClick: () => navigate("/dashboard"),
     portfolio,
     profileRef,
@@ -1537,11 +1435,10 @@ export default function AIPicks() {
                       setTradeError("");
                     }}
                     disabled={tradeLoading}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                      tradeMode === "amount"
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tradeMode === "amount"
                         ? "bg-white text-[#0F4C3A] shadow-sm"
                         : "text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     Invest by ₹
                   </button>
@@ -1579,11 +1476,10 @@ export default function AIPicks() {
                       setTradeError("");
                     }}
                     disabled={tradeLoading}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                      tradeMode === "quantity"
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tradeMode === "quantity"
                         ? "bg-white text-[#0F4C3A] shadow-sm"
                         : "text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     Buy by shares
                   </button>
@@ -1666,12 +1562,12 @@ export default function AIPicks() {
                       ₹
                       {Number.isFinite(enteredAmount)
                         ? enteredAmount.toLocaleString(
-                            "en-IN",
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }
-                          )
+                          "en-IN",
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        )
                         : "0.00"}
                     </span>
                   </div>
@@ -1768,12 +1664,12 @@ export default function AIPicks() {
                     ? "Processing..."
                     : calculatedQuantity >= 1
                       ? `Confirm Buy — ₹${estimatedTradeValue.toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}`
+                        "en-IN",
+                        {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }
+                      )}`
                       : "Confirm Buy"}
                 </button>
               </div>

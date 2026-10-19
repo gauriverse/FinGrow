@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiRefreshCw, FiSearch, FiStar, FiX } from "react-icons/fi";
+import { FiMenu, FiRefreshCw, FiSearch, FiStar, FiX } from "react-icons/fi";
 import { supabase } from "../../lib/supabase";
 import {
   getUserWatchlist,
   removeFromWatchlist,
 } from "../../services/watchlist";
-
+import Sidebar from "../../components/Sidebar";
 interface StockRelation {
   id: string;
   symbol: string;
@@ -51,6 +51,7 @@ const stripSuffix = (symbol: string) =>
 
 export default function Watchlist() {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [stocks, setStocks] = useState<WatchlistStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,11 +313,10 @@ export default function Watchlist() {
           type="button"
           onClick={() => handleSort(key)}
           title={`Sort by ${label.toLowerCase()}`}
-          className={`inline-flex items-center gap-1 rounded font-semibold transition-colors ${
-            active
-              ? "text-[#0F4C3A]"
-              : "text-slate-400 hover:text-slate-600"
-          } ${FOCUS}`}
+          className={`inline-flex items-center gap-1 rounded font-semibold transition-colors ${active
+            ? "text-[#0F4C3A]"
+            : "text-slate-400 hover:text-slate-600"
+            } ${FOCUS}`}
         >
           {label}
           <span
@@ -335,11 +335,10 @@ export default function Watchlist() {
       <span className="text-sm text-slate-400">N/A</span>
     ) : (
       <span
-        className={`inline-block rounded px-2 py-0.5 text-sm font-semibold tabular-nums ${
-          change >= 0
-            ? "bg-emerald-50 text-emerald-600"
-            : "bg-red-50 text-red-600"
-        }`}
+        className={`inline-block rounded px-2 py-0.5 text-sm font-semibold tabular-nums ${change >= 0
+          ? "bg-emerald-50 text-emerald-600"
+          : "bg-red-50 text-red-600"
+          }`}
       >
         {change >= 0 ? "▲ +" : "▼ "}
         {Math.abs(change).toFixed(2)}%
@@ -396,17 +395,29 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] font-sans">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Top bar */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 md:px-8 h-14 flex items-center">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className={`group text-sm font-medium text-slate-600 hover:text-[#0F4C3A] transition-colors rounded ${FOCUS}`}
-        >
-          <span className="inline-block transition-transform motion-safe:group-hover:-translate-x-0.5">
-            ←
-          </span>{" "}
-          Dashboard
-        </button>
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 active:scale-95 motion-reduce:transition-none ${FOCUS}`}
+            aria-label="Open menu"
+            title="Menu"
+          >
+            <FiMenu size={20} />
+          </button>
+
+          <button
+            onClick={() => navigate("/dashboard")}
+            className={`group text-sm font-medium text-slate-600 hover:text-[#0F4C3A] transition-colors rounded ${FOCUS}`}
+          >
+            <span className="inline-block transition-transform motion-safe:group-hover:-translate-x-0.5">
+              ←
+            </span>{" "}
+            Dashboard
+          </button>
+        </div>
       </header>
 
       <main className="px-4 md:px-8 py-5 max-w-7xl mx-auto">
@@ -490,11 +501,10 @@ export default function Watchlist() {
                     type="button"
                     onClick={() => setFilter(chip.value)}
                     aria-pressed={filter === chip.value}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors motion-safe:active:scale-[0.97] ${FOCUS} ${
-                      filter === chip.value
-                        ? "bg-[#0F4C3A] text-white"
-                        : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors motion-safe:active:scale-[0.97] ${FOCUS} ${filter === chip.value
+                      ? "bg-[#0F4C3A] text-white"
+                      : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
+                      }`}
                   >
                     {chip.label}{" "}
                     <span className="tabular-nums opacity-70">
@@ -736,11 +746,10 @@ export default function Watchlist() {
                                 </p>
                                 {change != null && (
                                   <p
-                                    className={`text-xs mt-0.5 tabular-nums ${
-                                      change >= 0
-                                        ? "text-emerald-600"
-                                        : "text-red-600"
-                                    }`}
+                                    className={`text-xs mt-0.5 tabular-nums ${change >= 0
+                                      ? "text-emerald-600"
+                                      : "text-red-600"
+                                      }`}
                                   >
                                     {change >= 0 ? "+" : ""}
                                     {change.toFixed(2)}%
