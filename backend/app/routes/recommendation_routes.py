@@ -2,7 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import get_current_user
-from app.services.recommendation_service import allocate_recommendations
+from app.services.recommendation_service import (
+    allocate_recommendations,
+    personalize_candidates,
+)
 from app.services.xai_service import explain_stock
 
 
@@ -40,4 +43,16 @@ def get_stock_explanation(
         raise HTTPException(
             status_code=503,
             detail="Stock explanation is temporarily unavailable. Please try again.",
+        ) from exc
+@router.get("/ranking")
+def get_ranking_insights(current_user=Depends(get_current_user)):
+    try:
+        ranking = personalize_candidates(str(current_user.id))
+        return {"ranking": ranking}
+
+    except Exception as exc:
+        print(f"Ranking insights failed: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail="Ranking insights are temporarily unavailable.",
         ) from exc

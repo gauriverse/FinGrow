@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { useNavigate } from 
+import { useNavigate } from
 "react-router-dom";
 
 import { supabase } from "../../lib/supabase";
 import {
   getRecommendations,
   getStockExplanation,
+  getRankingInsights,
 } from "../../services/recommendationService";
 import {
   getPortfolioSummary,
@@ -28,6 +29,18 @@ type Recommendation = {
   goal_context: string;
   horizon_context: string;
   suggested_allocation: number;
+};
+type RankingCandidate = {
+  symbol: string;
+  company_name: string;
+  current_price: number;
+  model_probability: number;
+  volatility_20d: number;
+  volatility_percentile: number;
+  rank: number;
+  risk_compatible: boolean;
+  fuzzy_risk_score?: number | null;
+  fuzzy_risk_category?: string;
 };
 
 type FeatureContribution = {
@@ -51,17 +64,17 @@ type StockExplanation = {
 
 const formatFeatureName = (name: string) => {
   const featureNames: Record<string, string> = {
-    SMA_Ratio_20: "SMA Ratio (20-day)",
-    SMA_Ratio_50: "SMA Ratio (50-day)",
-    Return_1D: "1-Day Return",
-    Return_5D: "5-Day Return",
-    Return_20D: "20-Day Return",
-    Volatility_5D: "5-Day Volatility",
-    Volatility_20D: "20-Day Volatility",
-    Volume_Ratio_20: "Volume Ratio (20-day)",
-    High_Low_Range: "High-Low Range",
-    Close_Open_Range: "Close-Open Range",
-  };
+  SMA_Ratio_20: "Price vs. 20-day average",
+  SMA_Ratio_50: "Price vs. 50-day average",
+  Return_1D: "Price change (1 day)",
+  Return_5D: "Price change (5 days)",
+  Return_20D: "Price change (20 days)",
+  Volatility_5D: "Price fluctuations (5 days)",
+  Volatility_20D: "Price fluctuations (20 days)",
+  Volume_Ratio_20: "Trading activity vs. usual",
+  High_Low_Range: "Today's highest-to-lowest price range",
+  Close_Open_Range: "Today's opening-to-closing price change",
+};
 
   const cleanName = name
     .replace(/&#x[0-9a-f]+;/gi, "")
@@ -270,6 +283,13 @@ export default function AIPicks() {
   const [explanationErrors, setExplanationErrors] = useState<
     Record<string, string>
   >({});
+  const [activeTab, setActiveTab] = useState<"picks" | "ranking">("picks");
+
+  const [rankingCandidates, setRankingCandidates] =
+    useState<RankingCandidate[]>([]);
+
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [rankingError, setRankingError] = useState("");
 
 
   const handleLoadExplanation = async (symbol: string) => {
@@ -445,6 +465,29 @@ export default function AIPicks() {
 
     loadRecommendations();
   }, []);
+  const handleOpenRanking = async () => {
+  setActiveTab("ranking");
+
+  if (rankingCandidates.length > 0) {
+    return;
+  }
+
+  setRankingLoading(true);
+  setRankingError("");
+
+  try {
+    const data = await getRankingInsights();
+    setRankingCandidates(data.ranking ?? []);
+  } catch (error) {
+    setRankingError(
+      error instanceof Error
+        ? error.message
+        : "Failed to load ranking insights",
+    );
+  } finally {
+    setRankingLoading(false);
+  }
+};
 
   // =====================================================
   // USER INFO
@@ -921,8 +964,36 @@ export default function AIPicks() {
             </p>
           </div>
         </div>
+        <div className="mt-5 flex gap-2 border-b border-[#DCE9E2] pb-2">
+  <button
+    type="button"
+    onClick={() => setActiveTab("picks")}
+    className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+      activeTab === "picks"
+        ? "bg-[#0F4C3A] text-white"
+        : "bg-white text-gray-600 hover:bg-gray-50"
+    }`}
+  >
+    For You
+  </button>
+
+  <button
+    type="button"
+    onClick={handleOpenRanking}
+    className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+      activeTab === "ranking"
+        ? "bg-[#0F4C3A] text-white"
+        : "bg-white text-gray-600 hover:bg-gray-50"
+    }`}
+  >
+    How Ranking Works
+  </button>
+</div>
+    {activeTab === "picks" && (
+      <>
 
         {/* Recommendation cards */}
+
 
         <div className="mt-4 grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
           {recommendations.map((recommendation, index) => {
@@ -1167,6 +1238,7 @@ export default function AIPicks() {
                               performance or represent direct percentage-point changes.
                             </p>
 
+
                             {explanation.top_positive_features.length > 0 && (
                               <div className="mt-3">
                                 <p className="text-xs font-semibold text-emerald-700">
@@ -1264,6 +1336,133 @@ export default function AIPicks() {
             </p>
           </div>
         )}
+         </>
+)}
+        {activeTab === "ranking" && (
+  <section className="mt-5 rounded-2xl border border-[#DCE9E2] bg-white p-4 shadow-sm">
+    <h2 className="text-lg font-bold text-[#0B3528]">
+      How your stocks are ranked
+    </h2>
+
+    <p className="mt-1 text-sm text-gray-500">
+      Stocks are ordered by the model's estimated probability of
+      outperforming the peer median over the next 20 trading days.
+      Your risk profile is then used to select suitable stocks.
+    </p>
+    <div className="mt-4 rounded-xl border border-[#DCE9E2] bg-[#F1F8F4] p-4">
+  <h3 className="text-sm font-semibold text-[#0B3528]">
+    How to understand your rankings
+  </h3>
+
+  <div className="mt-3 space-y-3 text-sm leading-5 text-gray-700">
+    <p>
+      <span className="font-semibold text-[#0F4C3A]">
+        1. The model compares stocks.
+      </span>{" "}
+      It studies recent price movements, trading activity and
+      volatility to estimate which stocks may perform better
+      than the typical stock in their comparison group over
+      the next 20 trading days.
+    </p>
+
+    <p>
+      <span className="font-semibold text-[#0F4C3A]">
+        2. Your risk profile matters.
+      </span>{" "}
+      A stock may rank highly but still be filtered out if its
+      volatility does not meet your selected risk limit.
+    </p>
+
+    <p>
+      <span className="font-semibold text-[#0F4C3A]">
+        3. Your final picks are selected.
+      </span>{" "}
+      FinGrow considers eligible stocks in ranking order and
+      selects the first three that pass the configured risk filter.
+    </p>
+  </div>
+
+  <p className="mt-3 border-t border-[#DCE9E2] pt-3 text-xs leading-5 text-gray-500">
+    <span className="font-semibold">What does the model score mean?</span>{" "}
+    It is an estimate of the chance of outperforming the comparison
+    group's median, not a predicted return or a guarantee of profit.
+  </p>
+</div>
+
+    {rankingLoading ? (
+      <p className="mt-5 text-sm text-gray-500">Loading rankings...</p>
+    ) : rankingError ? (
+      <p className="mt-5 text-sm text-red-600">{rankingError}</p>
+    ) : rankingCandidates.length === 0 ? (
+      <p className="mt-5 text-sm text-gray-500">
+        No ranking data available.
+      </p>
+    ) : (
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[600px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-xs text-gray-500">
+              <th className="px-3 py-3">Rank</th>
+              <th className="px-3 py-3">Stock</th>
+              <th className="px-3 py-3">Model score</th>
+              <th className="px-3 py-3">Volatility</th>
+              <th className="px-3 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rankingCandidates]
+              .sort((a, b) => a.rank - b.rank)
+              .map((candidate) => {
+                const selected = recommendations.some(
+                  (item) => item.symbol === candidate.symbol,
+                );
+
+                let status = "Passed risk filter; not in top 3";
+                if (selected) {
+                  status = "Selected for you";
+                } else if (!candidate.risk_compatible) {
+                  status = "Filtered by risk profile";
+                }
+
+                return (
+                  <tr
+                    key={candidate.symbol}
+                    className="border-b border-gray-100 last:border-0"
+                  >
+                    <td className="px-3 py-3 font-semibold text-[#0F4C3A]">
+                      #{candidate.rank}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="font-semibold text-[#0B3528]">
+                        {candidate.symbol.replace(".NS", "")}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {candidate.company_name}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 font-semibold">
+                      {formatPercent(candidate.model_probability)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {candidate.volatility_percentile.toFixed(1)}th percentile
+                    </td>
+                    <td className="px-3 py-3 text-xs">
+                      {status}
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    <p className="mt-4 text-xs leading-5 text-gray-500">
+      Model score is not an expected return or a guarantee of profit.
+      Stocks must also pass the configured risk filter to be selected.
+    </p>
+  </section>
+)}
 
         {/* Disclaimer */}
 
@@ -1274,6 +1473,7 @@ export default function AIPicks() {
             guaranteed returns or financial advice.
           </p>
         </div>
+
 
         {/* =====================================================
             PAPER TRADE MODAL
