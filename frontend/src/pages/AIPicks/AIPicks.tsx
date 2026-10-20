@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiSettings, FiLogOut } from "react-icons/fi";
+import { useNavigate } from 
+"react-router-dom";
+
 import { supabase } from "../../lib/supabase";
 import {
   getRecommendations,
@@ -158,14 +159,7 @@ function PageChrome({
 
   onLogoClick,
   portfolio,
-  profileRef,
-  profileOpen,
-  onToggleProfile,
-  onOpenSettings,
-  onLogout,
-  initials,
-  firstName,
-  email,
+
 }: ChromeProps) {
 
 

@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import HeaderActions from "../../components/HeaderActions";
 import {
-  FiSettings,
-  FiLogOut,
+  
   FiMenu,
   FiX,
-  FiBell,
+  
   FiBarChart2,
 } from "react-icons/fi";
 import {
@@ -498,7 +497,7 @@ export default function Portfolio() {
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [, setProfileOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -660,9 +659,7 @@ export default function Portfolio() {
 
   const nameParts = fullName.split(/\s+/);
 
-  const firstName = nameParts[0] || "User";
-
-  const initials =
+  
     nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : nameParts[0]?.slice(0, 2) || "U";
@@ -679,10 +676,7 @@ export default function Portfolio() {
   // LOGOUT
   // =====================================================
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/login");
-  };
+  
 
   // =====================================================
   // SELL
