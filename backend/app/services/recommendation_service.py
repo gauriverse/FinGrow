@@ -1,5 +1,9 @@
-from app.supabase import admin_supabase
+import logging
+import threading
+import time
+from typing import Any
 
+from app.supabase import admin_supabase
 
 from app.ml.fuzzy_risk import assess_fuzzy_risk
 from app.ml.inference import (
@@ -8,7 +12,76 @@ from app.ml.inference import (
 )
 from app.services.yahoo_service import get_stock_history
 
-def get_user_profile(user_id: str):
+
+logger = logging.getLogger(__name__)
+
+
+# -------------------------------------------------------------------
+# Yahoo Finance history cache
+# -------------------------------------------------------------------
+# Reuse stock history for five minutes rather than downloading it
+# again for every recommendation request.
+#
+# A per-symbol lock prevents concurrent requests for the same stock
+# from triggering duplicate downloads when its cache entry expires.
+# -------------------------------------------------------------------
+
+HISTORY_CACHE_TTL_SECONDS = 300
+
+_history_cache: dict[str, tuple[float, Any]] = {}
+_history_cache_guard = threading.Lock()
+_history_locks: dict[str, threading.Lock] = {}
+
+
+def _get_cached_stock_history(symbol: str) -> Any:
+    """Return cached stock history when fresh; otherwise fetch it."""
+
+    now = time.monotonic()
+
+    with _history_cache_guard:
+        cached = _history_cache.get(symbol)
+
+        if (
+            cached is not None
+            and now - cached[0] < HISTORY_CACHE_TTL_SECONDS
+        ):
+            return cached[1]
+
+        symbol_lock = _history_locks.setdefault(
+            symbol,
+            threading.Lock(),
+        )
+
+    # Do not hold the global cache lock while making a network request.
+    with symbol_lock:
+        # Another request may have refreshed the cache while we waited.
+        now = time.monotonic()
+
+        with _history_cache_guard:
+            cached = _history_cache.get(symbol)
+
+            if (
+                cached is not None
+                and now - cached[0] < HISTORY_CACHE_TTL_SECONDS
+            ):
+                return cached[1]
+
+        history = get_stock_history(symbol)
+
+        with _history_cache_guard:
+            _history_cache[symbol] = (
+                time.monotonic(),
+                history,
+            )
+
+        return history
+
+
+# -------------------------------------------------------------------
+# User profile
+# -------------------------------------------------------------------
+
+def get_user_profile(user_id: str) -> dict:
     result = (
         admin_supabase
         .table("profiles")
@@ -27,15 +100,19 @@ def get_user_profile(user_id: str):
 
     return result.data
 
-def get_ranked_candidates():
-    rankings = rank_stocks()
 
-    symbols = [stock["symbol"] for stock in rankings]
-    
+# -------------------------------------------------------------------
+# ML-ranked candidates and stock metadata
+# -------------------------------------------------------------------
 
-    return rankings
+def get_ranked_candidates() -> list[dict]:
+    """Return candidates in the order produced by the ML model."""
+    return rank_stocks()
 
-def get_stock_metadata(symbol: str):
+
+def get_stock_metadata(symbol: str) -> dict | None:
+    """Fetch metadata for one stock when an individual lookup is needed."""
+
     result = (
         admin_supabase
         .table("stocks")
@@ -52,16 +129,64 @@ def get_stock_metadata(symbol: str):
 
     return result.data
 
-def enrich_candidates():
-    
+
+def enrich_candidates() -> list[dict]:
+    """
+    Attach Supabase stock metadata to ML-ranked candidates.
+
+    Metadata is fetched in one query rather than issuing one query
+    per candidate. The original ML ranking order is preserved.
+    """
+
     candidates = get_ranked_candidates()
+
+    if not candidates:
+        return []
+
+    symbols = list(
+        dict.fromkeys(
+            candidate.get("symbol")
+            for candidate in candidates
+            if candidate.get("symbol")
+        )
+    )
+
+    if not symbols:
+        return []
+
+    result = (
+        admin_supabase
+        .table("stocks")
+        .select(
+            "id, symbol, company_name, sector, exchange, current_price"
+        )
+        .in_("symbol", symbols)
+        .execute()
+    )
+
+    stock_rows = result.data or []
+
+    stocks_by_symbol = {
+        stock["symbol"]: stock
+        for stock in stock_rows
+        if stock.get("symbol")
+    }
 
     enriched = []
 
     for candidate in candidates:
-        stock = get_stock_metadata(candidate["symbol"])
+        symbol = candidate.get("symbol")
+
+        if not symbol:
+            continue
+
+        stock = stocks_by_symbol.get(symbol)
 
         if not stock:
+            logger.warning(
+                "Skipping candidate %s: stock metadata not found",
+                symbol,
+            )
             continue
 
         enriched.append({
@@ -72,10 +197,14 @@ def enrich_candidates():
             "exchange": stock["exchange"],
             "current_price": stock["current_price"],
         })
-        symbols = [stock["symbol"] for stock in enriched]
-        
 
     return enriched
+
+
+# -------------------------------------------------------------------
+# Fuzzy risk assessment
+# -------------------------------------------------------------------
+
 RISK_MAX_VOLATILITY_PERCENTILE = {
     "conservative": 25,
     "moderate": 50,
@@ -83,9 +212,13 @@ RISK_MAX_VOLATILITY_PERCENTILE = {
     "very-aggressive": 100,
 }
 
+
 def enrich_fuzzy_risk(candidate: dict) -> dict:
-    """Add fuzzy risk assessment using the stock's latest history."""
-    history_response = get_stock_history(candidate["symbol"])
+    """Add fuzzy risk assessment using the stock's recent history."""
+
+    symbol = candidate["symbol"]
+
+    history_response = _get_cached_stock_history(symbol)
 
     indicators = get_latest_risk_indicators(history_response)
 
@@ -96,7 +229,6 @@ def enrich_fuzzy_risk(candidate: dict) -> dict:
         momentum_pct=indicators["momentum_pct"],
         drawdown_pct=indicators["drawdown_pct"],
     )
-    
 
     return {
         **candidate,
@@ -110,7 +242,7 @@ def enrich_fuzzy_risk(candidate: dict) -> dict:
 
 def is_risk_compatible(
     risk_level: str,
-    volatility_percentile: float
+    volatility_percentile: float,
 ) -> bool:
     max_percentile = RISK_MAX_VOLATILITY_PERCENTILE.get(risk_level)
 
@@ -119,38 +251,79 @@ def is_risk_compatible(
 
     return volatility_percentile <= max_percentile
 
+
+# -------------------------------------------------------------------
+# Investment-goal and horizon context
+# -------------------------------------------------------------------
+
 def get_goal_context(investment_goal: str) -> str:
     goal_messages = {
-        "wealth-growth": "The recommendation is aligned with a wealth-growth objective.",
-        "learn-investing": "The recommendation can be used as a learning-oriented market signal.",
-        "active-trading": "The ML signal is based on an approximately 20-trading-day prediction horizon.",
-        "major-purchase": "The ML signal is a short-term market signal and does not predict suitability for a specific purchase date.",
-        "regular-income": "The current ML model is not an income-focused model, so this signal should not be interpreted as a prediction of regular income.",
+        "wealth-growth": (
+            "The recommendation is aligned with a wealth-growth objective."
+        ),
+        "learn-investing": (
+            "The recommendation can be used as a learning-oriented "
+            "market signal."
+        ),
+        "active-trading": (
+            "The ML signal is based on an approximately "
+            "20-trading-day prediction horizon."
+        ),
+        "major-purchase": (
+            "The ML signal is a short-term market signal and does not "
+            "predict suitability for a specific purchase date."
+        ),
+        "regular-income": (
+            "The current ML model is not an income-focused model, so "
+            "this signal should not be interpreted as a prediction "
+            "of regular income."
+        ),
     }
 
     return goal_messages.get(
         investment_goal,
-        "The current ML signal should be interpreted with caution for this investment goal."
+        "The current ML signal should be interpreted with caution "
+        "for this investment goal.",
     )
 
 
 def get_horizon_context(investment_horizon: str) -> str:
     if investment_horizon == "lt-1y":
-        return "The user's horizon is under 1 year; the model's approximately 20-trading-day signal is relatively aligned with a short-term horizon."
+        return (
+            "The user's horizon is under 1 year; the model's "
+            "approximately 20-trading-day signal is relatively "
+            "aligned with a short-term horizon."
+        )
 
     if investment_horizon == "1-3y":
-        return "The model provides a short-term market signal and should not be interpreted as a 1-3 year return prediction."
+        return (
+            "The model provides a short-term market signal and should "
+            "not be interpreted as a 1-3 year return prediction."
+        )
 
     if investment_horizon == "3-5y":
-        return "The model provides a short-term market signal and should not be interpreted as a 3-5 year return prediction."
+        return (
+            "The model provides a short-term market signal and should "
+            "not be interpreted as a 3-5 year return prediction."
+        )
 
     if investment_horizon == "5y-plus":
-        return "The model provides a short-term market signal and should not be interpreted as a 5+ year return prediction."
+        return (
+            "The model provides a short-term market signal and should "
+            "not be interpreted as a 5+ year return prediction."
+        )
 
-    return "The model's approximately 20-trading-day prediction horizon should be considered when interpreting this recommendation."
+    return (
+        "The model's approximately 20-trading-day prediction horizon "
+        "should be considered when interpreting this recommendation."
+    )
 
 
-def personalize_candidates(user_id: str):
+# -------------------------------------------------------------------
+# Personalized recommendations
+# -------------------------------------------------------------------
+
+def personalize_candidates(user_id: str) -> list[dict]:
     profile = get_user_profile(user_id)
     candidates = enrich_candidates()
 
@@ -166,24 +339,30 @@ def personalize_candidates(user_id: str):
     for candidate in candidates:
         try:
             assessed_candidate = enrich_fuzzy_risk(candidate)
-        except (ValueError, KeyError, TypeError) as exc:
-            print(
-                f"Skipping fuzzy risk assessment for "
-                f"{candidate.get('symbol')}: {exc}"
+
+        except Exception:
+            # Keep the recommendation pipeline running if Yahoo Finance
+            # or risk-indicator calculation fails for an individual stock.
+            logger.exception(
+                "Fuzzy-risk assessment failed for %s",
+                candidate.get("symbol"),
             )
+
             assessed_candidate = {
                 **candidate,
                 "fuzzy_risk_score": None,
                 "fuzzy_risk_category": "Unavailable",
                 "fuzzy_risk_explanation": (
-                    "Risk assessment is unavailable because "
-                    "the required market data could not be calculated."
+                    "Risk assessment is unavailable because the "
+                    "required market data could not be calculated."
                 ),
+                "momentum_pct": None,
+                "drawdown_pct": None,
             }
 
         compatible = is_risk_compatible(
             risk_level,
-            candidate["volatility_percentile"]
+            candidate["volatility_percentile"],
         )
 
         personalized.append({
@@ -195,7 +374,12 @@ def personalize_candidates(user_id: str):
 
     return personalized
 
-def get_user_holdings(user_id: str):
+
+# -------------------------------------------------------------------
+# Existing paper portfolio helpers
+# -------------------------------------------------------------------
+
+def get_user_holdings(user_id: str) -> dict:
     result = (
         admin_supabase
         .table("portfolio")
@@ -210,7 +394,9 @@ def get_user_holdings(user_id: str):
         holding["stock_id"]: holding
         for holding in holdings
     }
-def get_available_balance(user_id: str):
+
+
+def get_available_balance(user_id: str) -> float:
     result = (
         admin_supabase
         .table("paper_accounts")
@@ -230,7 +416,8 @@ def get_available_balance(user_id: str):
 
     return float(available_balance)
 
-def allocate_recommendations(user_id: str):
+
+def allocate_recommendations(user_id: str) -> list[dict]:
     candidates = personalize_candidates(user_id)
     available_balance = float(get_available_balance(user_id))
 
@@ -243,7 +430,7 @@ def allocate_recommendations(user_id: str):
         if candidate.get("risk_compatible", False)
     ]
 
-    # Defensive safeguard: prevent duplicate stock allocations.
+    # Defensive safeguard: avoid allocating to the same stock twice.
     unique_eligible = []
     seen_symbols = set()
 
@@ -259,8 +446,9 @@ def allocate_recommendations(user_id: str):
     if not top_candidates:
         return []
 
-    # Normalize percentages if fewer than three stocks are eligible.
+    # Preserve the existing 50% / 30% / 20% allocation policy.
     allocation_percentages = [0.50, 0.30, 0.20]
+
     percentages = allocation_percentages[:len(top_candidates)]
     total_percentage = sum(percentages)
     percentages = [p / total_percentage for p in percentages]
@@ -272,8 +460,8 @@ def allocate_recommendations(user_id: str):
             **candidate,
             "suggested_allocation": round(
                 available_balance * percentage,
-                2
-            )
+                2,
+            ),
         })
 
     return recommendations
