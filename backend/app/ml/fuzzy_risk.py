@@ -29,7 +29,7 @@ def _build_risk_system():
         np.arange(0, 101, 1), "risk"
     )
 
-    # Volatility is relative to the candidate stock universe.
+    # Volatility percentile relative to the candidate stock universe.
     volatility["low"] = fuzz.trimf(
         volatility.universe, [0, 0, 40]
     )
@@ -40,11 +40,10 @@ def _build_risk_system():
         volatility.universe, [60, 100, 100]
     )
 
-    # Momentum i a recent price return in percentage points.
+    # Momentum is a recent price return in percentage points.
     momentum["negative"] = fuzz.trapmf(
-    momentum.universe, [-100, -100, -20, 0]
-)
-
+        momentum.universe, [-100, -100, -20, 0]
+    )
     momentum["neutral"] = fuzz.trimf(
         momentum.universe, [-10, 0, 10]
     )
@@ -53,7 +52,7 @@ def _build_risk_system():
         momentum.universe, [0, 20, 100, 100]
     )
 
-    # Drawdown is the percentage decline from a recent price peak.
+    # Drawdown is a positive percentage decline from a recent peak.
     drawdown["small"] = fuzz.trimf(
         drawdown.universe, [0, 0, 15]
     )
@@ -80,12 +79,14 @@ def _build_risk_system():
             volatility["low"] & drawdown["small"],
             risk["low"],
         ),
+
         # Higher risk: high volatility or a large drawdown.
         ctrl.Rule(
             volatility["high"] | drawdown["large"],
             risk["high"],
         ),
-        # Negative momentum adds risk when volatility is not low.
+
+        # Negative momentum increases risk at medium/high volatility.
         ctrl.Rule(
             momentum["negative"] & volatility["medium"],
             risk["high"],
@@ -94,30 +95,60 @@ def _build_risk_system():
             momentum["negative"] & volatility["high"],
             risk["high"],
         ),
-        # Stable conditions generally imply moderate or low risk.
+
+        # Medium volatility, small drawdown, neutral momentum.
         ctrl.Rule(
-            volatility["medium"] & drawdown["small"]
+            volatility["medium"]
+            & drawdown["small"]
+            & momentum["neutral"],
+            risk["medium"],
+        ),
+
+        # Positive momentum with low volatility and small drawdown.
+        ctrl.Rule(
+            volatility["low"]
+            & drawdown["small"]
+            & momentum["positive"],
+            risk["low"],
+        ),
+
+        # Positive momentum with medium volatility and small drawdown.
+        ctrl.Rule(
+            volatility["medium"]
+            & drawdown["small"]
+            & momentum["positive"],
+            risk["medium"],
+        ),
+
+        # Medium drawdown: moderate risk for neutral/positive momentum.
+        # Negative momentum at medium volatility is handled by
+        # the high-risk rule above.
+        ctrl.Rule(
+            volatility["medium"]
+            & drawdown["medium"]
             & momentum["neutral"],
             risk["medium"],
         ),
         ctrl.Rule(
-            volatility["low"] & drawdown["small"]
+            volatility["medium"]
+            & drawdown["medium"]
             & momentum["positive"],
-            risk["low"],
-        ),
-        # Remaining combinations receive a moderate assessment.
-        ctrl.Rule(
-            volatility["medium"] & drawdown["medium"],
             risk["medium"],
         ),
+
+        # Low volatility with medium drawdown.
         ctrl.Rule(
             volatility["low"] & drawdown["medium"],
             risk["medium"],
         ),
+
+        # High volatility remains a high-risk signal.
         ctrl.Rule(
             volatility["high"] & drawdown["small"],
             risk["high"],
         ),
+
+        # Medium volatility with large drawdown.
         ctrl.Rule(
             volatility["medium"] & drawdown["large"],
             risk["high"],
@@ -137,25 +168,44 @@ def assess_fuzzy_risk(
 ) -> FuzzyRiskResult:
     """Return a fuzzy risk score from 0 to 100."""
 
-    if not 0 <= volatility_percentile <= 100:
-        raise ValueError("volatility_percentile must be between 0 and 100")
+    values = {
+        "volatility_percentile": volatility_percentile,
+        "momentum_pct": momentum_pct,
+        "drawdown_pct": drawdown_pct,
+    }
 
-    if not np.isfinite(momentum_pct) or not -100 <= momentum_pct <= 100:
+    for name, value in values.items():
+        if not np.isfinite(value):
+            raise ValueError(f"{name} must be a finite number")
+
+    if not 0 <= volatility_percentile <= 100:
         raise ValueError(
-            f"momentum_pct must be between -100 and 100; got {momentum_pct}"
-    )
+            "volatility_percentile must be between 0 and 100"
+        )
+
+    if not -100 <= momentum_pct <= 100:
+        raise ValueError(
+            f"momentum_pct must be between -100 and 100; "
+            f"got {momentum_pct}"
+        )
 
     if not 0 <= drawdown_pct <= 50:
-        raise ValueError("drawdown_pct must be between 0 and 50")
+        raise ValueError(
+            "drawdown_pct must be between 0 and 50"
+        )
 
     simulation = ctrl.ControlSystemSimulation(_RISK_SYSTEM)
 
-    simulation.input["volatility"] = volatility_percentile
-    simulation.input["momentum"] = momentum_pct
-    simulation.input["drawdown"] = drawdown_pct
+    simulation.input["volatility"] = float(volatility_percentile)
+    simulation.input["momentum"] = float(momentum_pct)
+    simulation.input["drawdown"] = float(drawdown_pct)
 
     simulation.compute()
+
     score = float(simulation.output["risk"])
+
+    if not np.isfinite(score):
+        raise ValueError("Fuzzy inference produced an invalid risk score")
 
     if score < 35:
         category = "Low"
