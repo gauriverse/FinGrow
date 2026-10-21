@@ -21,6 +21,7 @@ import Learn from "../pages/Learn/Learn";
 import Lesson from "../pages/Learn/Lesson";
 import Watchlist from "../pages/Watchlist/watchlist";
 import StockDetails from "../pages/StockDetails/StockDetails";
+import Explore from "../pages/Explore/Explore";
 import Wallet from "../pages/Wallet/Wallet";
 
 export default function AppRoutes() {
@@ -62,6 +63,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <Watchlist />
+            </ProtectedRoute>
+          }
+        />
+                <Route
+          path="/explore"
+          element={
+            <ProtectedRoute>
+              <Explore />
             </ProtectedRoute>
           }
         />

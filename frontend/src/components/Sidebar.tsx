@@ -9,10 +9,12 @@ import {
   FiCreditCard,
   FiStar,
   FiBookOpen,
+  FiCompass,
 } from "react-icons/fi";
 
 const navItems = [
   { label: "Dashboard", icon: FiGrid, path: "/dashboard" },
+  { label: "Explore", icon: FiCompass, path: "/explore" },
   { label: "AI Picks", icon: FiZap, path: "/ai-picks" },
   { label: "Portfolio", icon: FiBriefcase, path: "/portfolio" },
   { label: "Wallet", icon: FiCreditCard, path: "/wallet" },
