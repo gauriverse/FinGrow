@@ -1,205 +1,170 @@
-# FinGrow
+# FinGrow: A Smart Stock Recommendation and Paper Trading Platform
 
-FinGrow is a full-stack investing education and paper-trading application focused on Indian equities. It combines market data and portfolio tools with personalized, machine-learning-assisted stock signals and learning content. Trades use simulated funds; FinGrow does not place real trades.
+FinGrow is a full-stack web application that helps beginner investors learn the Indian stock market. It combines live market data, a risk-free paper-trading portfolio, machine-learning-assisted stock recommendations, fuzzy risk assessment, feature-based explanations and short investing lessons in one platform.
 
-> **Disclaimer:** Market data and model outputs are informational and educational, not financial advice or a guarantee of future performance.
-
-## Table of Contents
-
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Architecture and Project Structure](#architecture-and-project-structure)
-- [Prerequisites](#prerequisites)
-- [Setup](#setup)
-- [Environment Variables](#environment-variables)
-- [Run Locally](#run-locally)
-- [API](#api)
-- [Database and Supabase Setup](#database-and-supabase-setup)
-- [Screenshots](#screenshots)
-- [Potential Improvements](#potential-improvements)
-- [License](#license)
+> **Disclaimer:** All trades use simulated funds and FinGrow does not place real trades. Market data and model outputs are for educational purposes only and are not financial advice.
 
 ## Features
 
-- Supabase email/password authentication, account onboarding, and investor profile settings.
-- Indian market overview, including NIFTY 50 and SENSEX, stock quotes, historical prices, movers, and symbol search.
-- Stock details, technical indicators, and a user-managed watchlist.
-- A paper portfolio with simulated deposits and buy/sell transactions, holdings, performance history, and insights.
-- Stock recommendations ranked using a bundled logistic-regression model and filtered against user risk preferences.
-- Fuzzy risk assessments and feature-based explanations for recommendations.
-- Investing lessons with per-user learning progress.
+- **Authentication and profile:** Supabase email/password sign-up and login, onboarding and an investor profile with risk preference.
+- **Market overview:** NIFTY 50 and SENSEX summaries, stock quotes, one-year price history, market movers and symbol search.
+- **Stock details:** technical indicators and a user-managed watchlist.
+- **Paper portfolio:** simulated deposits, buy and sell transactions, holdings, wallet history, portfolio history and insights.
+- **Recommendations:** stocks ranked by a logistic-regression model and filtered by the user's risk preference.
+- **Risk and explanation:** fuzzy risk assessments and feature-based explanations for each recommendation.
+- **Learning:** short investing lessons with per-user progress tracking.
 
-## Technology Stack
+## Tech Stack
 
-| Area | Technologies |
-| --- | --- |
+| Layer | Technology |
+|---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS, React Router |
-| Backend API | Python, FastAPI, Uvicorn |
-| Data and authentication | Supabase (Postgres and Supabase Auth) |
-| Market data | `yfinance` |
-| Machine learning and analytics | scikit-learn, pandas, NumPy, SciPy, SHAP |
+| Backend | Python, FastAPI, Uvicorn |
+| Database and auth | Supabase (Postgres and Supabase Auth) |
+| Market data | Yahoo Finance via `yfinance` |
+| ML and analytics | scikit-learn, pandas, NumPy, SciPy, SHAP |
 
-## Architecture and Project Structure
+## Architecture
 
-The frontend is a Vite single-page application. It reads Supabase configuration from Vite environment variables and calls the local FastAPI service for market, recommendation, learning, and portfolio operations. Supabase is also accessed directly by some frontend features, including authentication, profiles, and the watchlist. The backend uses Supabase for persisted application data and `yfinance` for market information; the recommendation model is loaded from the bundled joblib file when the API starts.
+FinGrow is a three-tier system:
 
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── main.py                 # FastAPI app, CORS, router registration, scheduler
-│   │   ├── routes/                 # Auth, market, portfolio, recommendations, learning
-│   │   ├── services/               # Supabase, Yahoo Finance, portfolio and AI services
-│   │   └── ml/                     # Model inference, risk assessment, explanations, model file
-│   ├── scripts/
-│   │   └── sync_stock_universe.py  # Populate stock records from the model's stock universe
-│   └── requirements.txt
-└── frontend/
-    ├── public/
-    ├── src/
-    │   ├── components/
-    │   ├── lib/                    # Supabase client
-    │   ├── pages/                  # Landing, auth, portfolio, learn, market and account views
-    │   ├── routes/
-    │   └── services/               # Frontend API and Supabase operations
-    ├── .env.example
-    └── package.json
+1. A **React single-page application** provides the user interface.
+2. A **FastAPI service** exposes market, portfolio, recommendation and learning operations and hosts the ML module.
+3. **Supabase** provides authentication and the Postgres database. Some features (profile, watchlist) are accessed directly from the browser through the Supabase client.
+
+The recommendation model is a `StandardScaler` + `LogisticRegression` pipeline, bundled as `fingrow_v3_relative_logistic.joblib` and loaded when the API starts. It predicts whether a stock will outperform the median 20-day return of its stock universe. Stocks are ranked by this probability and filtered by the user's risk preference.
+
+## Repository Structure
+
+```
+backend/
+  app/
+    main.py            # FastAPI app, CORS, router registration, scheduler
+    routes/            # auth, market, portfolio, recommendations, learn
+    services/          # Supabase, Yahoo Finance, portfolio logic, AI
+    ml/                # inference, risk assessment, explanations, model file
+  scripts/
+    sync_stock_universe.py   # fills stock records from the model's universe
+  requirements.txt     # Python dependencies (UTF-16 encoded)
+frontend/
+  src/
+    pages/             # landing, auth, portfolio, learn, market, account
+    components/        # reusable UI components
+    routes/            # routing
+    services/          # API calls and Supabase operations
+    lib/               # Supabase client configuration
+  .env.example         # template for Supabase variables
 ```
 
 ## Prerequisites
 
-- Python and `pip`. The repository does not declare a Python version constraint.
-- Node.js and npm compatible with the Vite version declared by the frontend dependencies.
-- A Supabase project with the schema and database functions described in [Database and Supabase Setup](#database-and-supabase-setup).
-- Network access to the market data source used by `yfinance`.
+- Python and pip
+- Node.js and npm (compatible with the Vite version in `frontend/package.json`)
+- Git
+- A Supabase project with the required schema, database functions and access policies (see [Known Limitations](#known-limitations))
 
-## Setup
+## Getting Started
 
-Clone the repository and open two terminals in the project root. The backend requirements file is UTF-16 encoded, so create a UTF-8 temporary copy before installing it:
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/gauriverse/FinGrow
+cd FinGrow
+```
+
+### 2. Configure environment variables
+
+| File | Variable | Notes |
+|---|---|---|
+| `frontend/.env` | `VITE_SUPABASE_URL` | Supabase project URL |
+| `frontend/.env` | `VITE_SUPABASE_ANON_KEY` | Public (anon) key |
+| `backend/.env` | `SUPABASE_URL` | Supabase project URL |
+| `backend/.env` | `SUPABASE_KEY` | Public (anon) key |
+| `backend/.env` | `SUPABASE_SERVICE_KEY` | Privileged key. Keep private, never expose to the browser |
+
+You can copy `frontend/.env.example` as a starting point.
+
+### 3. Run the backend
 
 ```powershell
 cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -c "from pathlib import Path; Path('requirements.utf8.txt').write_text(Path('requirements.txt').read_text(encoding='utf-16'), encoding='utf-8')"
-python -m pip install -r requirements.utf8.txt
-```
-
-In the second terminal, install the frontend dependencies from the committed npm lockfile:
-
-```powershell
-cd frontend
-npm ci
-Copy-Item .env.example .env
-```
-
-Create the environment files as described below. The `requirements.utf8.txt` file is only an installation aid and should not be committed; it can be removed after installation.
-
-## Environment Variables
-
-### Frontend
-
-Copy `frontend/.env.example` to `frontend/.env` and supply the values from your Supabase project:
-
-```dotenv
-VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-supabase-anon-or-publishable-key>
-```
-
-These `VITE_` values are included in the browser bundle. Use only the Supabase client-side anon/publishable key here; never put a service-role key in frontend configuration.
-
-### Backend
-
-Create `backend/.env` with:
-
-```dotenv
-SUPABASE_URL=https://<your-project-ref>.supabase.co
-SUPABASE_KEY=<your-supabase-anon-or-publishable-key>
-SUPABASE_SERVICE_KEY=<your-supabase-service-role-key>
-```
-
-The backend requires all three values. `SUPABASE_SERVICE_KEY` is privileged and must remain private, local to the backend, and out of source control. The backend reads `.env` when started from the `backend` directory.
-
-## Run Locally
-
-Start the backend from the `backend` directory after activating its virtual environment:
-
-```powershell
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API listens at `http://127.0.0.1:8000`. FastAPI's interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+The API runs at <http://127.0.0.1:8000>, with interactive docs at <http://127.0.0.1:8000/docs>.
 
-Start the frontend in a separate terminal:
+Optionally, sync the stock universe:
 
 ```powershell
+python scripts/sync_stock_universe.py
+```
+
+### 4. Run the frontend
+
+```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Vite prints the local URL when it starts (normally `http://localhost:5173`). The frontend services currently address the API at `http://127.0.0.1:8000`; the backend CORS configuration allows the localhost frontend origins on port `5173`.
+The app is served at <http://localhost:5173>.
 
-The frontend also defines `npm run build`, `npm run lint`, and `npm run preview` in `frontend/package.json`.
+## API Endpoints
 
-## API
+Endpoints marked with a lock require a Supabase access token in the `Authorization: Bearer <token>` header.
 
-The API base URL for local development is `http://127.0.0.1:8000`. Endpoints that require an authenticated user expect a Supabase access token in the `Authorization: Bearer <access-token>` header.
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | | Health / message response |
+| POST | `/auth/signup` | | Register with email and password |
+| POST | `/auth/login` | | Sign in and return an access token |
+| POST | `/auth/logout` | | Sign out |
+| GET | `/market/stock/{symbol}` | | Current quote and fundamentals |
+| GET | `/market/history/{symbol}` | | About one year of price history |
+| GET | `/market/nifty` | | NIFTY 50 summary |
+| GET | `/market/sensex` | | SENSEX summary |
+| GET | `/market/movers` | | Market movers |
+| GET | `/market/search?query={query}` | | Search stock symbols |
+| GET | `/recommendations` | 🔒 | Recommendations for the current user |
+| GET | `/recommendations/{symbol}/explanation` | 🔒 | Model explanation for a stock |
+| GET | `/portfolio/summary` | 🔒 | Paper account balance and holdings |
+| POST | `/portfolio/add-funds` | 🔒 | Add simulated funds |
+| POST | `/portfolio/buy` | 🔒 | Buy shares in the paper portfolio |
+| POST | `/portfolio/sell` | 🔒 | Sell shares in the paper portfolio |
+| GET | `/portfolio/wallet/history` | 🔒 | Recent deposits and trades |
+| GET | `/portfolio/history?days={days}` | 🔒 | Portfolio value history |
+| GET | `/portfolio/insights` | 🔒 | Portfolio analytics |
+| GET | `/portfolio/trades` | 🔒 | Trade history |
+| GET | `/learn/content` | 🔒 | Published learning content |
+| GET | `/learn/content/{slug}` | 🔒 | A single lesson |
+| GET | `/learn/progress` | 🔒 | Lesson progress of the current user |
+| PUT | `/learn/progress/{content_id}?progress_percent={percent}` | 🔒 | Update lesson progress |
 
-| Method | Endpoint | Authentication | Description |
-| --- | --- | --- | --- |
-| `GET` | `/` | No | API health/message response |
-| `POST` | `/auth/signup` | No | Register with email and password |
-| `POST` | `/auth/login` | No | Sign in and return an access token |
-| `POST` | `/auth/logout` | No | Sign out through Supabase Auth |
-| `GET` | `/market/stock/{symbol}` | No | Current quote and available fundamentals |
-| `GET` | `/market/history/{symbol}` | No | Approximately one year of price history |
-| `GET` | `/market/nifty` | No | NIFTY 50 summary |
-| `GET` | `/market/sensex` | No | SENSEX summary |
-| `GET` | `/market/movers` | No | Market movers |
-| `GET` | `/market/search?query={query}` | No | Search stock symbols |
-| `GET` | `/recommendations` | Yes | Recommendations personalized to the current user |
-| `GET` | `/recommendations/{symbol}/explanation` | Yes | Model explanation for a stock |
-| `GET` | `/portfolio/summary` | Yes | Paper account balance and holdings summary |
-| `POST` | `/portfolio/add-funds` | Yes | Add simulated funds |
-| `POST` | `/portfolio/buy` | Yes | Buy shares in the paper portfolio |
-| `POST` | `/portfolio/sell` | Yes | Sell shares in the paper portfolio |
-| `GET` | `/portfolio/wallet/history` | Yes | Recent simulated deposits and trades |
-| `GET` | `/portfolio/history?days={days}` | Yes | Portfolio history (the backend bounds the requested range) |
-| `GET` | `/portfolio/insights` | Yes | Portfolio analytics |
-| `GET` | `/portfolio/trades` | Yes | Trade history |
-| `GET` | `/learn/content` | Yes | Published learning content |
-| `GET` | `/learn/content/{slug}` | Yes | A published lesson |
-| `GET` | `/learn/progress` | Yes | Current user's lesson progress |
-| `PUT` | `/learn/progress/{content_id}?progress_percent={percent}` | Yes | Update lesson progress |
+## Security Notes
 
-## Database and Supabase Setup
+- The frontend uses only the public anon key. The service-role key stays in `backend/.env`.
+- Backend CORS allows only the localhost frontend origins on port 5173.
+- Never commit `.env` files.
 
-FinGrow uses Supabase Auth and Supabase Postgres; it does not configure a separate local database server. Backend and frontend code refer to tables including `profiles`, `stocks`, `stock_prices`, `watchlist`, `portfolio`, `paper_accounts`, `transactions`, `wallet_transactions`, `technical_indicators`, `ai_predictions`, `risk_analysis`, `learn_content`, and `user_learning_progress`.
+## Known Limitations
 
-Several operations also expect Supabase database functions: `email_exists`, `add_funds`, `execute_buy`, and `execute_sell`. The portfolio and learning features depend on fields and relationships in the tables above, and some database writes are performed with the backend service-role key.
+- The repository does not include Supabase schema, migrations, database functions or access policies. These must exist in your Supabase project before the portfolio and learning features work.
+- The frontend API address is hard-coded to a local address and must be moved to an environment variable before deployment.
+- The model is a single logistic-regression classifier trained on a universe of 30 stocks.
+- SHAP-based explanations and full SENSEX support are still in progress.
+- There are no automated tests yet.
+- Market data depends on Yahoo Finance and `yfinance` availability.
+- The paper account ignores brokerage, taxes and market impact.
 
-**No database migrations, schema SQL, or database-function definitions are included in this repository.** Create and configure the Supabase schema, relationships, constraints, functions, and access policies required by the application before using these features. The stock-universe sync script can be run from `backend` after configuration:
+## Roadmap
 
-```powershell
-python -m scripts.sync_stock_universe
-```
-
-## Screenshots
-
-Replace these placeholders with current application screenshots:
-
-| Screen | Screenshot |
-| --- | --- |
-| Landing page | ![Landing page](docs/screenshots/landing.png) |
-| Portfolio | ![Portfolio](docs/screenshots/portfolio.png) |
-| AI recommendations | ![AI recommendations](docs/screenshots/ai-recommendations.png) |
-
-## Potential Improvements
-
-- Add checked-in Supabase schema migrations and setup instructions for the required database functions and policies.
-- Move the frontend API base URL from hard-coded localhost addresses into environment-based configuration.
-- Add automated tests for API routes, portfolio calculations, model inference, and frontend flows.
-
-## License
-
-No license file is present in the repository. Add a license before redistributing or reusing this project.
+- Add checked-in Supabase migrations, functions and policies with setup instructions.
+- Move the frontend API URL into environment variables.
+- Add automated tests for API routes, portfolio logic, model inference and frontend flows.
+- Complete SHAP integration and SENSEX support.
+- Evaluate against tree-based models and other baselines, and expand and regularly retrain the stock universe.
+- Add more learning content and quizzes.
+- Add optional transaction costs and taxes to the paper account.
